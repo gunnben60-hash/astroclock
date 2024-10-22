@@ -67,6 +67,9 @@ def getLines(location):
         else:
             outstring += ' (Phase: ' + str(int(moon.phase+0.5)) + '%)'
         yield outstring
+    location.date = ephem.date(datetime.datetime.now())
+    moon.compute(location)
+    yield 'Position des Mondes:\t' + str(moon.ra)
 
 
 def main(stdscr):
