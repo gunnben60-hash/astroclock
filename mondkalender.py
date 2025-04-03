@@ -93,5 +93,5 @@ if __name__ == '__main__':
     #print(moon.phase)
 
     
-    with open('2024.txt', 'w') as outfile:
+    with open('2025.txt', 'w') as outfile:
         outfile.write(calendar.generateMoonCalender(location))

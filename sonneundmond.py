@@ -1,6 +1,5 @@
-
 import datetime
-import ephem
+import ephem #type: ignore
 import mondkalender
 import time
 
