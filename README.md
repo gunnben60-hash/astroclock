@@ -1,5 +1,15 @@
 # Astronomische Berechnungen zu Erde, Sonne und Mond
 
+## Astronomische Uhr
+
+Datei:
+
+    astroclock.py
+
+- zentrale Anwendung in PyQt5 inspiriert durch die Prager Rathausuhr
+- hier werden alle Informationen zusammengeführt
+
+
 ## Sternzeit
 
 Datei:

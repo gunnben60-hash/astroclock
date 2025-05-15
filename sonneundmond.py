@@ -3,7 +3,6 @@ import ephem #type: ignore
 import mondkalender
 import time
 
-import curses 
 from zoneinfo import ZoneInfo
 
 def getLines(location):
@@ -87,6 +86,7 @@ def main(stdscr):
         time.sleep(0.5)
 
 if __name__ == '__main__':
+    import curses 
     curses.wrapper(main)
 
 
