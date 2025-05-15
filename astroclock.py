@@ -166,7 +166,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     tau += math.pi
                 
                 radius = SIZE * (0.6 + declination / math.pi * 180.0 / 23.44 * DELTA_DECLINATION_SUN) / 2.0
-                if radius < SIZE/6.0:
+                if radius < SIZE/6.0 or radius > SIZE//2 - RIM_1:
                     continue
                 deltaX = int(math.sin(tau) * radius +0.5)
                 deltaY = int(math.cos(tau) * radius +0.5)
