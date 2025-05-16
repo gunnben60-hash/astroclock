@@ -169,20 +169,10 @@ class MainWindow(QtWidgets.QMainWindow):
             prev = None
             h = - hInDegree / 180.0 * math.pi
             N = 10000
-            prevArg = None
-            switch = 0
             for i in range(0, N):
                 azimut = 2.0 * math.pi / N * i
                 declination = math.asin(math.sin(phi)*math.sin(h) - math.cos(phi)*math.cos(azimut)*math.cos(h))
-                tau = math.atan(math.sin(azimut)/(math.sin(phi)*math.cos(azimut) + math.cos(phi)*math.tan(h)))
-                
-                arg = math.sin(azimut)/(math.sin(phi)*math.cos(azimut) + math.cos(phi)*math.tan(h))
-                if prevArg and (prevArg > 0) != (arg > 0):
-                    switch += 1
-                prevArg = arg
-                
-                if switch in [0, 3]:
-                    tau += math.pi
+                tau = math.atan2((math.sin(phi)*math.cos(azimut) + math.cos(phi)*math.tan(h)), math.sin(azimut)) + math.pi/2.0
                 
                 radius = SIZE * (0.6 + declination / math.pi * 180.0 / 23.44 * DELTA_DECLINATION_SUN) / 2.0
                 if radius < SIZE/6.0 or radius > SIZE//2 - RIM_1:
@@ -198,24 +188,15 @@ class MainWindow(QtWidgets.QMainWindow):
         prev = None
         h = 0
         N = 10000
-        prevArg = None
-        switch = 0
         for i in range(0, N):
             azimut = 2.0 * math.pi / N * i
             declination = math.asin(math.sin(phi)*math.sin(h) - math.cos(phi)*math.cos(azimut)*math.cos(h))
-            tau = math.atan(math.sin(azimut)/(math.sin(phi)*math.cos(azimut) + math.cos(phi)*math.tan(h)))
-            
-            arg = math.sin(azimut)/(math.sin(phi)*math.cos(azimut) + math.cos(phi)*math.tan(h))
-            if prevArg and (prevArg > 0) != (arg > 0):
-                switch += 1
-            prevArg = arg
-            
-            if switch in [0, 3]:
-                tau += math.pi
-            
+            tau = math.atan2((math.sin(phi)*math.cos(azimut) + math.cos(phi)*math.tan(h)), math.sin(azimut)) + math.pi/2.0
+
             declinationInDegree = declination / math.pi * 180.0
             if declinationInDegree < -23.44 or declinationInDegree > 23.44:
                 continue
+            
             
             if tau > 0.0 and tau < math.pi:
                 pass
@@ -223,6 +204,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 pass
             else: 
                 continue
+            
             delta = (math.pi - tau) / 6.0
             for j in range(-5, 6):
                 angle = math.pi + delta*j
