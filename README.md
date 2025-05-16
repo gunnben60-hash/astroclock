@@ -9,6 +9,15 @@ Datei:
 - zentrale Anwendung in PyQt5 inspiriert durch die Prager Rathausuhr
 - hier werden alle Informationen zusammengeführt
 
+Eine ausführbare Datei liegt hier:
+    I:\Produkte\Develop\!Peter\Astroclock
+
+Beim erstmaligen Ausführen wird das Konfig-File 
+
+    astroclock.location
+
+angelegt. Hier können der Standort und die lokale Zeitzone eingestellt werden.
+
 
 ## Sternzeit
 
