@@ -5,14 +5,14 @@ import time
 
 from zoneinfo import ZoneInfo
 
-def getLines(location):
+def getLines(location, timezone):
     sun = ephem.Sun()
     moon = ephem.Moon()
         
     location.date = ephem.now()
     nextNoon = location.next_transit(sun)
     lastNoon = location.previous_transit(sun)
-    yield 'MESZ:\t       '+ephem.to_timezone(ephem.now(), ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S')
+    yield 'Lokale Zeit:\t       '+ephem.to_timezone(ephem.now(), ZoneInfo(timezone)).strftime('%d.%m.%y %H:%M:%S')
     yield 'Wahre Sonnenzeit:\t'+(datetime.datetime(nextNoon.datetime().year, nextNoon.datetime().month, nextNoon.datetime().day, 12, 0, 0)
         + datetime.timedelta(days=(ephem.now()-nextNoon)/(nextNoon-lastNoon))).strftime('%H:%M:%S')
     siderialTime = str(location.sidereal_time())[:-3]

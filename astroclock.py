@@ -1,6 +1,7 @@
 import datetime
 import ephem
 import math
+import os
 import sys
 import threading
 import time
@@ -31,6 +32,24 @@ MOON = ephem.Moon()
 
 LON = 13.066667
 LAT = 50.75
+TIMEZONE = 'Europe/Berlin'
+CONFIG_FILE_NAME = 'astroclock.location'
+if os.path.exists(CONFIG_FILE_NAME):
+    with open(CONFIG_FILE_NAME) as infile:
+        data = infile.read().strip().split('\n')
+        for line in data:
+            zeile = [x.strip() for x in line.split('=')]
+            if zeile[0].upper() == 'LON':
+                LON = float(zeile[1])
+            elif zeile[0].upper() == 'LAT':
+                LAT = float(zeile[1])
+            elif zeile[0].upper() == 'TIMEZONE':
+                TIMEZONE = zeile[1]
+else:
+    with open(CONFIG_FILE_NAME, 'w') as outfile:
+        outfile.write('LON='+str(LON)+'\n')
+        outfile.write('LAT='+str(LAT)+'\n')
+        outfile.write('TIMEZONE='+str(TIMEZONE)+'\n')
 
 LOCATION = ephem.Observer()
 LOCATION.lon, LOCATION.lat  = str(LON), str(LAT)
@@ -52,7 +71,7 @@ class MainWindow(QtWidgets.QMainWindow):
         canvas = QtGui.QPixmap(SIZE, SIZE + TEXT_HEIGHT)
         canvas.fill(Qt.white)
         self.label.setPixmap(canvas)
-
+        
         self.drawAll()
         
     def drawAll(self):
@@ -85,7 +104,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         text = []
         counter = 0
-        for line in getLines(LOCATION):
+        for line in getLines(LOCATION, TIMEZONE):
             if counter < 5 and ':' in line:
                 line = line[:-3]
             counter += 1
