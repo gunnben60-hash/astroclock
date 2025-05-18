@@ -10,7 +10,13 @@ Datei:
 - hier werden alle Informationen zusammengeführt
 
 Eine ausführbare Datei liegt hier:
+
     I:\Produkte\Develop\!Peter\Astroclock
+
+Diese wurde mit Pyinstaller gebaut:
+
+    >pyinstaller .\astroclock.py --onefile --windowed
+
 
 Beim erstmaligen Ausführen wird das Konfig-File 
 
