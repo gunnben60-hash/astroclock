@@ -24,6 +24,22 @@ class MyThread(threading.Thread):
     
     def stop(self):
         self.running = False
+
+def findRootByBisection(arg1, arg2, delta, f):
+    argM = 0.5*(arg1 + arg2)
+    if abs(arg1-arg2) < delta:
+        return argM
+
+    y1 = f(arg1)
+    y2 = f(arg2)
+    yM = f(argM)
+
+    if (y1 > 0) == (yM > 0):
+        return findRootByBisection(argM, arg2, delta, f)
+    else:
+        return findRootByBisection(arg1, argM, delta, f)
+
+   
             
 
 
@@ -59,6 +75,7 @@ RIM_1 = 20
 TEXT_HEIGHT = 270
 SYMBOL_CLOCK = ['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI']
 SYMBOL_ZODIAC = ['♈︎', '♉︎', '♊︎', '♋︎', '♌︎', '♍︎', '♎︎', '♏︎', '♐︎', '♑︎', '♒︎', '♓︎']
+SYMBOL_LUNAR_NODES = ['☊', '☋']
 DELTA_DECLINATION_SUN = 0.2
 
     
@@ -81,6 +98,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(self.label)
         self.drawBackground()
         self.drawZodiac()
+        self.drawMoonNodes()
         self.drawMoon()
         self.drawSun()
         self.fillText()
@@ -234,6 +252,10 @@ class MainWindow(QtWidgets.QMainWindow):
             deltaY1 = int(math.cos(angle) * localSize/2.0 +0.5)
             deltaX2 = int(math.sin(angle) * (localSize/2.0-RIM_1) +0.5)
             deltaY2 = int(math.cos(angle) * (localSize/2.0-RIM_1)  +0.5)
+            if i in [6]:
+                painter.setPen(Qt.red)
+            else:
+                painter.setPen(Qt.blue)
             painter.drawLine(SIZE // 2 - deltaX2, SIZE // 2 + deltaY2, SIZE // 2 - deltaX1, SIZE // 2 + deltaY1)
             
         font=QtGui.QFont()
@@ -250,10 +272,10 @@ class MainWindow(QtWidgets.QMainWindow):
             painter.rotate(angle * 180.0 / math.pi)
             painter.drawText(-RIM_1//2, RIM_1//2, SYMBOL_ZODIAC[i])
             painter.restore()
-            
-        
+
         painter.end()
         
+
     def drawSun(self):
         LOCATION.date = self.globalTime
         SUN.compute(LOCATION)
@@ -278,7 +300,8 @@ class MainWindow(QtWidgets.QMainWindow):
         painter.drawLine(SIZE // 2, SIZE // 2, SIZE // 2 - deltaX, SIZE // 2 + deltaY)
         
         painter.end()
-        
+
+
     def drawMoon(self):
         LOCATION.date = self.globalTime
         MOON.compute(LOCATION)
@@ -298,6 +321,89 @@ class MainWindow(QtWidgets.QMainWindow):
         painter.drawEllipse(SIZE // 2 - deltaX1 - RIM_1//2, SIZE // 2 + deltaY1 - RIM_1//2, RIM_1 - 1, RIM_1 - 1)
         
         painter.end()
+
+
+    def calcMoonEclLat(self, t):
+        LOCATION.date = t
+        MOON.compute(LOCATION)
+        return ephem.Ecliptic(MOON).lat
+
+
+    def drawMoonNodes(self):
+        now = self.globalTime.datetime()
+
+        time0 = ephem.Date(now + datetime.timedelta(days=-15))
+        lat0 = self.calcMoonEclLat(time0)
+
+        time1 = ephem.Date(now)
+        lat1 = self.calcMoonEclLat(time1)
+
+        time2 = ephem.Date(now + datetime.timedelta(days=15))
+        lat2 = self.calcMoonEclLat(time2)
+
+        if (lat0 > 0 and lat2 < 0) or (lat0 < 0 and lat2 > 0):
+            t1, t2 = time0, time2
+        elif (lat0 > 0 and lat1 < 0) or (lat0 < 0 and lat1 > 0):
+            t1, t2 = time0, time1
+        else:
+            t1, t2 = time1, time2
+
+        tNode = findRootByBisection(t1, t2, 0.000001, self.calcMoonEclLat)
+        print(ephem.Date(tNode).datetime())
+        nodeType = 0
+        if self.calcMoonEclLat(tNode - 1.0) > 0:
+            nodeType = 1
+
+        LOCATION.date = tNode
+        MOON.compute(LOCATION)
+
+        LOCATION.date = self.globalTime
+
+        if nodeType == 0:
+            angle0 = float(LOCATION.sidereal_time()) - float(MOON.a_ra) 
+            angle1 = float(LOCATION.sidereal_time()) - float(MOON.a_ra) + math.pi
+        else:
+            angle0 = float(LOCATION.sidereal_time()) - float(MOON.a_ra) + math.pi
+            angle1 = float(LOCATION.sidereal_time()) - float(MOON.a_ra) 
+
+        LOCATION.date = tNode + 30
+
+        painter = QtGui.QPainter(self.label.pixmap())
+        
+        deltaX = int(math.sin(angle0) * (SIZE / 5.0) +0.5)
+        deltaY = int(math.cos(angle0) * (SIZE / 5.0) +0.5)
+        painter.drawLine(SIZE // 2, SIZE // 2, SIZE // 2 - deltaX, SIZE // 2 + deltaY)
+
+        deltaX1 = int(math.sin(angle0) * (SIZE / 5.0 + RIM_1//2) +0.5)
+        deltaY1 = int(math.cos(angle0) * (SIZE / 5.0 + RIM_1//2) +0.5)
+        painter.save()
+        font=QtGui.QFont()
+        font.setPixelSize(20)
+        painter.setFont(font)
+        painter.translate(SIZE // 2 + deltaX1, SIZE // 2 - deltaY1)
+        painter.rotate(angle0 * 180.0 / math.pi)
+        painter.drawText(-RIM_1//2, RIM_1//2, SYMBOL_LUNAR_NODES[0])
+        painter.restore()
+
+        deltaX = int(math.sin(angle1) * (SIZE / 5.0) +0.5)
+        deltaY = int(math.cos(angle1) * (SIZE / 5.0) +0.5)
+        painter.drawLine(SIZE // 2, SIZE // 2, SIZE // 2 - deltaX, SIZE // 2 + deltaY)
+
+        deltaX1 = int(math.sin(angle1) * (SIZE / 5.0 + RIM_1//2) +0.5)
+        deltaY1 = int(math.cos(angle1) * (SIZE / 5.0 + RIM_1//2) +0.5)
+        painter.save()
+        font=QtGui.QFont()
+        font.setPixelSize(20)
+        painter.setFont(font)
+        painter.translate(SIZE // 2 + deltaX1, SIZE // 2 - deltaY1)
+        painter.rotate(angle1 * 180.0 / math.pi)
+        painter.drawText(-RIM_1//2, RIM_1//2, SYMBOL_LUNAR_NODES[1])
+        painter.restore()
+
+
+        
+
+        pass
         
         
 app = QtWidgets.QApplication(sys.argv)
