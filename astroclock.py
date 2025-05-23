@@ -291,8 +291,21 @@ class MainWindow(QtWidgets.QMainWindow):
             if not previous is None:
                 painter.drawLine(previous[0], previous[1], SIZE // 2 - deltaX1, SIZE // 2 + deltaY1)
             previous = SIZE // 2 - deltaX1, SIZE // 2 + deltaY1
-            
         self.sunDeclVsRa.sort(key = lambda x: x[1])
+        
+        painter.setPen(Qt.black)
+        for i in range(28 * 12):
+            LOCATION.date = ephem.Date(self.globalTime.datetime() + datetime.timedelta(hours=i*2))
+            MOON.compute(LOCATION)
+            LOCATION.date = self.globalTime
+            angle = float(LOCATION.sidereal_time()) - float(MOON.a_ra) + math.pi
+            
+            decInDegree = MOON.a_dec / math.pi * 180.0
+        
+            radius = SIZE * (0.6 + decInDegree / 23.44 * DELTA_DECLINATION_SUN) / 2.0
+            deltaX1 = int(math.sin(angle) * radius +0.5)
+            deltaY1 = int(math.cos(angle) * radius +0.5)
+            painter.drawPoint(SIZE // 2 - deltaX1, SIZE // 2 + deltaY1)
 
         painter.end()
         
