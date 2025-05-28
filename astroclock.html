@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Astroclock</title>
+  <script>
+    function refreshImage() {
+        currentImage = new Image();
+        currentImage.src = "astroclock.png?timestamp=" + new Date().getTime();
+        document.getElementById("image").src = currentImage.src;
+    }
+    setInterval(refreshImage, 10000);
+  </script>
+</head>
+<body>
+
+<img id="image" src="astroclock.png">
+
+</body>
+</html>
