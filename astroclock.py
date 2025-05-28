@@ -482,13 +482,21 @@ class MainWindow(QtWidgets.QMainWindow):
 app = QtWidgets.QApplication(sys.argv)
 window = MainWindow()
 
+def saveImage():
+    imageVar = QtGui.QImage(window.size(), QtGui.QImage.Format.Format_ARGB32)
+    window.render(imageVar)
+    imageVar.save("astroclock.png")
+
 def redraw():
     window.drawAll()
     window.update()
+    saveImage()
+    
 
 thread = MyThread(redraw, 60)
 thread.start()
 window.show()
+saveImage()
 app.exec_()
 thread.stop()
 thread.join()
