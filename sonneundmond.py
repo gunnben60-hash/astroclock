@@ -5,16 +5,16 @@ import time
 
 from zoneinfo import ZoneInfo
 
-def getLines(location, timezone):
+def getLines(location, timezone, now=ephem.now()):
     sun = ephem.Sun()
     moon = ephem.Moon()
         
-    location.date = ephem.now()
+    location.date = now
     nextNoon = location.next_transit(sun)
     lastNoon = location.previous_transit(sun)
-    yield 'Lokale Zeit:\t       '+ephem.to_timezone(ephem.now(), ZoneInfo(timezone)).strftime('%d.%m.%y %H:%M:%S')
+    yield 'Lokale Zeit:\t       '+ephem.to_timezone(now, ZoneInfo(timezone)).strftime('%d.%m.%y %H:%M:%S')
     yield 'Wahre Sonnenzeit:\t'+(datetime.datetime(nextNoon.datetime().year, nextNoon.datetime().month, nextNoon.datetime().day, 12, 0, 0)
-        + datetime.timedelta(days=(ephem.now()-nextNoon)/(nextNoon-lastNoon))).strftime('%H:%M:%S')
+        + datetime.timedelta(days=(now-nextNoon)/(nextNoon-lastNoon))).strftime('%H:%M:%S')
     siderialTime = str(location.sidereal_time())[:-3]
     if siderialTime[1] == ':':
         siderialTime = '0' + siderialTime
@@ -35,15 +35,15 @@ def getLines(location, timezone):
         calendar = mondkalender.MoonCalendar()
 
         temp = 'abnehmend'
-        if ephem.next_full_moon(ephem.now()) < ephem.next_new_moon(ephem.now()):
+        if ephem.next_full_moon(now) < ephem.next_new_moon(now):
             temp = 'zunehmend'
-        yield 'Monat (' + temp + '):\t'+calendar.getMonth(ephem.now())
-        if ephem.next_full_moon(ephem.now()) < ephem.next_new_moon(ephem.now()):
-            yield 'nächster Vollmond:\t'+ephem.to_timezone(ephem.next_full_moon(ephem.now()), ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S')
-            yield 'nächster Neumond:\t'+ephem.to_timezone(ephem.next_new_moon(ephem.now()), ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S')
+        yield 'Monat (' + temp + '):\t'+calendar.getMonth(now)
+        if ephem.next_full_moon(now) < ephem.next_new_moon(now):
+            yield 'nächster Vollmond:\t'+ephem.to_timezone(ephem.next_full_moon(now), ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S')
+            yield 'nächster Neumond:\t'+ephem.to_timezone(ephem.next_new_moon(now), ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S')
         else:
-            yield 'nächster Neumond:\t'+ephem.to_timezone(ephem.next_new_moon(ephem.now()), ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S')
-            yield 'nächster Vollmond:\t'+ephem.to_timezone(ephem.next_full_moon(ephem.now()), ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S')
+            yield 'nächster Neumond:\t'+ephem.to_timezone(ephem.next_new_moon(now), ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S')
+            yield 'nächster Vollmond:\t'+ephem.to_timezone(ephem.next_full_moon(now), ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S')
         yield ''
 
         location.date = ephem.date(datetime.datetime.now().replace(hour=0, minute=0, second=0))

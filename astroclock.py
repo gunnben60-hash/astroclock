@@ -122,7 +122,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         text = []
         counter = 0
-        for line in getLines(LOCATION, TIMEZONE):
+        for line in getLines(LOCATION, TIMEZONE, self.globalTime):
             if counter < 5 and ':' in line:
                 line = line[:-3]
             counter += 1
