@@ -93,7 +93,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
     def drawAll(self):
         self.globalTime = ephem.now()
-        #self.globalTime = ephem.Date(datetime.datetime(2025, 5, 14, 11, 7, 0))
+        #self.globalTime = ephem.Date(datetime.datetime(2025, 6, 25, 10, 7, 0))
         self.clear()
         self.setCentralWidget(self.label)
         self.drawBackground()

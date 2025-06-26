@@ -19,11 +19,11 @@ def getLines(location, timezone, now=ephem.now()):
     if siderialTime[1] == ':':
         siderialTime = '0' + siderialTime
     yield 'Sternzeit:\t\t'+siderialTime
-    yield 'UTC:\t\t\t'+datetime.datetime.now(datetime.timezone.utc).strftime('%H:%M:%S')
+    yield 'UTC:\t\t\t'+ephem.to_timezone(now, datetime.timezone.utc).strftime('%H:%M:%S')
     yield ''
     
     try:
-        location.date = ephem.date(datetime.datetime.now().replace(hour=0, minute=0, second=0))
+        location.date = ephem.date(ephem.localtime(now).replace(hour=0, minute=0, second=0))
         sunrisetoday = location.next_rising(sun)
         noonToday = location.next_transit(sun)
         sunsetToday = location.next_setting(sun)
@@ -32,7 +32,7 @@ def getLines(location, timezone, now=ephem.now()):
         yield 'Sonnenuntergang:\t'+ephem.to_timezone(sunsetToday, ZoneInfo('Europe/Berlin')).strftime('%H:%M:%S')+' ('+str(sunsetToday.datetime()-sunrisetoday.datetime())[:-10]+'h Tag)'
         yield ''
 
-        calendar = mondkalender.MoonCalendar()
+        calendar = mondkalender.MoonCalendar(year=ephem.localtime(now).year)
 
         temp = 'abnehmend'
         if ephem.next_full_moon(now) < ephem.next_new_moon(now):
@@ -46,7 +46,7 @@ def getLines(location, timezone, now=ephem.now()):
             yield 'nächster Vollmond:\t'+ephem.to_timezone(ephem.next_full_moon(now), ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S')
         yield ''
 
-        location.date = ephem.date(datetime.datetime.now().replace(hour=0, minute=0, second=0))
+        location.date = ephem.date(ephem.localtime(now).replace(hour=0, minute=0, second=0))
         moonriseToday = location.next_rising(moon)
         moonZenitToday = location.next_transit(moon)
         moonsetToday = location.next_setting(moon)
@@ -69,7 +69,7 @@ def getLines(location, timezone, now=ephem.now()):
             else:
                 outstring += ' (Phase: ' + str(int(moon.phase+0.5)) + '%)'
             yield outstring
-        location.date = ephem.date(datetime.datetime.now())
+        location.date = now
         moon.compute(location)
         yield 'Position des Mondes:\t' + str(moon.ra)
     except Exception as ex:
