@@ -37,7 +37,7 @@ def getLines(location, timezone):
         temp = 'abnehmend'
         if ephem.next_full_moon(ephem.now()) < ephem.next_new_moon(ephem.now()):
             temp = 'zunehmend'
-        yield 'Monat (' + temp + '):\t'+calendar.getMonth()
+        yield 'Monat (' + temp + '):\t'+calendar.getMonth(ephem.now())
         if ephem.next_full_moon(ephem.now()) < ephem.next_new_moon(ephem.now()):
             yield 'nächster Vollmond:\t'+ephem.to_timezone(ephem.next_full_moon(ephem.now()), ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S')
             yield 'nächster Neumond:\t'+ephem.to_timezone(ephem.next_new_moon(ephem.now()), ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S')
