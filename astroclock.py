@@ -5,25 +5,9 @@ import os
 import sys
 import threading
 import time
-from PyQt5 import QtCore, QtGui, QtWidgets, uic
+from PyQt5 import QtCore, QtGui, QtWidgets, uic 
 from PyQt5.QtCore import Qt
 from sonneundmond import getLines
-
-class MyThread(threading.Thread):
-    def __init__(self, callback, interval):
-        threading.Thread.__init__(self)
-        self.callback = callback
-        self.interval = interval
-        self.running = True
-
-    def run(self):
-        while self.running:
-            time.sleep(self.interval)
-            if self.running:
-                self.callback()
-    
-    def stop(self):
-        self.running = False
 
 def findRootByBisection(arg1, arg2, delta, f):
     argM = 0.5*(arg1 + arg2)
@@ -491,12 +475,12 @@ def redraw():
     window.drawAll()
     window.update()
     saveImage()
-    
 
-thread = MyThread(redraw, 60)
-thread.start()
-window.show()
+window.show()    
+
+timer = QtCore.QTimer()
+timer.timeout.connect(redraw)
+timer.start(60000)
+
 saveImage()
 app.exec_()
-thread.stop()
-thread.join()
