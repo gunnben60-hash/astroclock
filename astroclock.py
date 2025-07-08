@@ -33,6 +33,9 @@ MOON = ephem.Moon()
 LON = 13.066667
 LAT = 50.75
 TIMEZONE = 'Europe/Berlin'
+SIMULATE = False
+SIMULATION_REDRAW_IN_S = 1
+SIMULATION_TIME_STEP_IN_S = 3600
 CONFIG_FILE_NAME = 'astroclock.location'
 if os.path.exists(CONFIG_FILE_NAME):
     with open(CONFIG_FILE_NAME) as infile:
@@ -45,11 +48,20 @@ if os.path.exists(CONFIG_FILE_NAME):
                 LAT = float(zeile[1])
             elif zeile[0].upper() == 'TIMEZONE':
                 TIMEZONE = zeile[1]
+            elif zeile[0].upper() == 'SIMULATE':
+                SIMULATE = (zeile[1] == 'True')
+            elif zeile[0].upper() == 'SIMULATION_REDRAW_IN_S':
+                SIMULATION_REDRAW_IN_S = int(zeile[1])
+            elif zeile[0].upper() == 'SIMULATION_TIME_STEP_IN_S':
+                SIMULATION_TIME_STEP_IN_S = int(zeile[1])
 else:
     with open(CONFIG_FILE_NAME, 'w') as outfile:
         outfile.write('LON='+str(LON)+'\n')
         outfile.write('LAT='+str(LAT)+'\n')
         outfile.write('TIMEZONE='+str(TIMEZONE)+'\n')
+        outfile.write('SIMULATE='+str(SIMULATE)+'\n')
+        outfile.write('SIMULATION_REDRAW_IN_S='+str(SIMULATION_REDRAW_IN_S)+'\n')
+        outfile.write('SIMULATION_TIME_STEP_IN_S='+str(SIMULATION_TIME_STEP_IN_S)+'\n')
 
 LOCATION = ephem.Observer()
 LOCATION.lon, LOCATION.lat  = str(LON), str(LAT)
@@ -72,11 +84,15 @@ class MainWindow(QtWidgets.QMainWindow):
         canvas = QtGui.QPixmap(SIZE, SIZE + TEXT_HEIGHT)
         canvas.fill(Qt.white)
         self.label.setPixmap(canvas)
+        self.globalTime = None
         
         self.drawAll()
         
     def drawAll(self):
-        self.globalTime = ephem.now()
+        if not SIMULATE or self.globalTime is None:
+            self.globalTime = ephem.now()
+        else:
+            self.globalTime = ephem.Date(self.globalTime.datetime() + datetime.timedelta(seconds=SIMULATION_TIME_STEP_IN_S))
         #self.globalTime = ephem.Date(datetime.datetime(2025, 6, 25, 10, 7, 0))
         self.clear()
         self.setCentralWidget(self.label)
@@ -480,7 +496,8 @@ window.show()
 
 timer = QtCore.QTimer()
 timer.timeout.connect(redraw)
-timer.start(60000)
+
+timer.start(60000 if not SIMULATE else SIMULATION_REDRAW_IN_S*1000)
 
 saveImage()
 app.exec_()
