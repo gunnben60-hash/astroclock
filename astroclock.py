@@ -34,6 +34,7 @@ LON = 13.066667
 LAT = 50.75
 TIMEZONE = 'Europe/Berlin'
 SIMULATE = False
+SHOW_PLANETS = False
 SIMULATION_REDRAW_IN_S = 1
 SIMULATION_TIME_STEP_IN_S = 3600
 CONFIG_FILE_NAME = 'astroclock.location'
@@ -49,11 +50,13 @@ if os.path.exists(CONFIG_FILE_NAME):
             elif zeile[0].upper() == 'TIMEZONE':
                 TIMEZONE = zeile[1]
             elif zeile[0].upper() == 'SIMULATE':
-                SIMULATE = (zeile[1] == 'True')
+                SIMULATE = (zeile[1].lower() == 'true')
             elif zeile[0].upper() == 'SIMULATION_REDRAW_IN_S':
                 SIMULATION_REDRAW_IN_S = int(zeile[1])
             elif zeile[0].upper() == 'SIMULATION_TIME_STEP_IN_S':
                 SIMULATION_TIME_STEP_IN_S = int(zeile[1])
+            elif zeile[0].upper() == 'SHOW_PLANETS':
+                SHOW_PLANETS = (zeile[1].lower() == 'true')
 else:
     with open(CONFIG_FILE_NAME, 'w') as outfile:
         outfile.write('LON='+str(LON)+'\n')
@@ -62,16 +65,19 @@ else:
         outfile.write('SIMULATE='+str(SIMULATE)+'\n')
         outfile.write('SIMULATION_REDRAW_IN_S='+str(SIMULATION_REDRAW_IN_S)+'\n')
         outfile.write('SIMULATION_TIME_STEP_IN_S='+str(SIMULATION_TIME_STEP_IN_S)+'\n')
+        outfile.write('SHOW_PLANETS='+str(SHOW_PLANETS)+'\n')
 
 LOCATION = ephem.Observer()
 LOCATION.lon, LOCATION.lat  = str(LON), str(LAT)
 
 SIZE = 600
 RIM_1 = 20
+RIM_PLANET = 10
 TEXT_HEIGHT = 270
 SYMBOL_CLOCK = ['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI']
 SYMBOL_ZODIAC = ['♈︎', '♉︎', '♊︎', '♋︎', '♌︎', '♍︎', '♎︎', '♏︎', '♐︎', '♑︎', '♒︎', '♓︎']
 SYMBOL_LUNAR_NODES = ['☊', '☋']
+PLANETS = [(ephem.Mercury(), '☿'), (ephem.Venus(), '♀'), (ephem.Mars(), '♂'), (ephem.Jupiter(), '♃'), (ephem.Saturn(), '♄')]
 DELTA_DECLINATION_SUN = 0.2
 
     
@@ -98,6 +104,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(self.label)
         self.drawBackground()
         self.drawZodiac()
+        if SHOW_PLANETS:
+            self.drawPlanets()
         self.drawMoonNodes()
         self.drawMoon()
         self.drawSun()
@@ -474,9 +482,51 @@ class MainWindow(QtWidgets.QMainWindow):
         painter.drawText(-RIM_1//2, RIM_1//2, SYMBOL_LUNAR_NODES[1])
         painter.restore()
 
-        painter.end()       
+        painter.end()    
+        
+    def drawPlanets(self):
+        LOCATION.date = self.globalTime
+        painter = QtGui.QPainter(self.label.pixmap())
+        for (planet, symbol) in PLANETS:
+            planet.compute(LOCATION)
+        
+            raPlanet = planet.a_ra
+            if raPlanet < 0.0:
+                raPlanet += 2.0 * math.pi
+            if raPlanet > 2.0 * math.pi:
+                raPlanet -= 2.0 * math.pi
+                
+            angle = float(LOCATION.sidereal_time()) - float(raPlanet) + math.pi
+        
+            deltaX = int(math.sin(angle) * (SIZE / 2.0-RIM_PLANET) +0.5)
+            deltaY = int(math.cos(angle) * (SIZE / 2.0 - RIM_PLANET) +0.5)
+            painter.setPen(Qt.PenStyle(Qt.DotLine))
+            painter.drawLine(SIZE // 2, SIZE // 2, SIZE // 2 - deltaX, SIZE // 2 + deltaY)
+            
+            decInDegree = planet.a_dec / math.pi * 180.0
+            
+            radius = SIZE * (0.6 + decInDegree / 23.44 * DELTA_DECLINATION_SUN) / 2.0
+            deltaX1 = int(math.sin(angle) * radius +0.5)
+            deltaY1 = int(math.cos(angle) * radius +0.5)
+            painter.setPen(Qt.PenStyle(Qt.SolidLine))
+            painter.drawEllipse(SIZE // 2 - deltaX1 - RIM_PLANET//2, SIZE // 2 + deltaY1 - RIM_PLANET//2, RIM_PLANET - 1, RIM_PLANET - 1)
+            
+            
+            radius2 = SIZE * (0.6 + decInDegree / 23.44 * DELTA_DECLINATION_SUN) / 2.0 + RIM_1
+            deltaX2 = int(math.sin(angle) * radius2+0.5)
+            deltaY2 = int(math.cos(angle) * radius2+0.5)
+            painter.save()
+            font=QtGui.QFont()
+            font.setPixelSize(18)
+            painter.setFont(font)
+            painter.translate(SIZE // 2 - deltaX2, SIZE // 2 + deltaY2)
+            painter.rotate(angle * 180.0 / math.pi + 180.0)
+            painter.drawText(-RIM_1//2, RIM_1//2, symbol)
+            painter.restore()
+        
+        painter.end()
+          
 
-        pass
         
         
 app = QtWidgets.QApplication(sys.argv)
