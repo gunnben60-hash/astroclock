@@ -332,14 +332,14 @@ class MainWindow(QtWidgets.QMainWindow):
         brush.setColor(Qt.yellow)
         painter.setBrush(brush)
         
+        deltaX = int(math.sin(angle) * (SIZE / 2.0-RIM_1) +0.5)
+        deltaY = int(math.cos(angle) * (SIZE / 2.0 - RIM_1) +0.5)
+        painter.drawLine(SIZE // 2, SIZE // 2, SIZE // 2 - deltaX, SIZE // 2 + deltaY)
+        
         radius = SIZE * (0.6 + decInDegree / 23.44 * DELTA_DECLINATION_SUN) / 2.0
         deltaX1 = int(math.sin(angle) * radius +0.5)
         deltaY1 = int(math.cos(angle) * radius +0.5)
         painter.drawEllipse(SIZE // 2 - deltaX1 - RIM_1//2, SIZE // 2 + deltaY1 - RIM_1//2, RIM_1 - 1, RIM_1 - 1)
-        
-        deltaX = int(math.sin(angle) * (SIZE / 2.0-RIM_1) +0.5)
-        deltaY = int(math.cos(angle) * (SIZE / 2.0 - RIM_1) +0.5)
-        painter.drawLine(SIZE // 2, SIZE // 2, SIZE // 2 - deltaX, SIZE // 2 + deltaY)
         
         painter.end()
 
