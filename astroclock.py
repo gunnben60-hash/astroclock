@@ -370,11 +370,11 @@ class MainWindow(QtWidgets.QMainWindow):
         betaResolution = 100.0
         x0 = SIZE // 2 - deltaX1
         y0 = SIZE // 2 + deltaY1
-        r0 = RIM_1//2 + 1
+        r0 = RIM_1//2
         
-        def paint(alpha, beta, color):
-            deltaX0 = -math.sin(beta)*math.sin(alpha)*r0
-            deltaY0 = math.cos(beta)*r0
+        def paint(alpha, beta, r, color):
+            deltaX0 = -math.sin(beta)*math.sin(alpha)*r
+            deltaY0 = math.cos(beta)*r
 
             deltaX2 = int(deltaX0 * math.cos(angle) - deltaY0 * math.sin(angle))
             deltaY2 = int(deltaX0 * math.sin(angle) + deltaY0 * math.cos(angle))
@@ -385,14 +385,21 @@ class MainWindow(QtWidgets.QMainWindow):
         for indexBeta in range(int(betaResolution)):
             beta = math.pi / betaResolution * indexBeta
             
-            for indexAlpha in range(int(MOON.phase/100.0 * alphaResolution+0.5)):
-                alpha = math.pi / alphaResolution * indexAlpha + 0.5 * math.pi
-                paint(alpha, beta, Qt.white)
+            if ephem.next_full_moon(self.globalTime) < ephem.next_new_moon(self.globalTime):
+                #zunehmend
+                for indexAlpha in range(int(MOON.phase/100.0 * alphaResolution+0.5)):
+                    alpha = math.pi / alphaResolution * indexAlpha + 0.5 * math.pi
+                    paint(alpha, beta, r0, Qt.white)
+            else:
+                #abnehmend
+                for indexAlpha in range(int(alphaResolution - MOON.phase/100.0 * alphaResolution+0.5), int(alphaResolution)):
+                    alpha = math.pi / alphaResolution * indexAlpha + 0.5 * math.pi
+                    paint(alpha, beta, r0, Qt.white)
         
         for indexBeta in range(int(betaResolution)):
             beta = math.pi / betaResolution * indexBeta
-            paint(0.5 * math.pi, beta, Qt.black)
-            paint(math.pi + 0.5 * math.pi, beta, Qt.black)
+            paint(0.5 * math.pi, beta, r0+1, Qt.black)
+            paint(math.pi + 0.5 * math.pi, beta, r0+1, Qt.black)
             
         painter.end()
 
