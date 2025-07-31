@@ -350,6 +350,10 @@ class MainWindow(QtWidgets.QMainWindow):
         angle = float(LOCATION.sidereal_time()) - float(MOON.a_ra) + math.pi
         
         painter = QtGui.QPainter(self.label.pixmap())
+        brush = QtGui.QBrush()
+        brush.setStyle(Qt.SolidPattern)
+        brush.setColor(QtGui.QColor('darkgray'))
+        painter.setBrush(brush)
         
         deltaX = int(math.sin(angle) * (SIZE / 2.0-RIM_1) +0.5)
         deltaY = int(math.cos(angle) * (SIZE / 2.0 - RIM_1) +0.5)
@@ -360,8 +364,36 @@ class MainWindow(QtWidgets.QMainWindow):
         radius = SIZE * (0.6 + decInDegree / 23.44 * DELTA_DECLINATION_SUN) / 2.0
         deltaX1 = int(math.sin(angle) * radius +0.5)
         deltaY1 = int(math.cos(angle) * radius +0.5)
-        painter.drawEllipse(SIZE // 2 - deltaX1 - RIM_1//2, SIZE // 2 + deltaY1 - RIM_1//2, RIM_1 - 1, RIM_1 - 1)
+        painter.drawEllipse(SIZE // 2 - deltaX1 - RIM_1//2, SIZE // 2 + deltaY1 - RIM_1//2, RIM_1, RIM_1)
         
+        alphaResolution = 100.0
+        betaResolution = 100.0
+        x0 = SIZE // 2 - deltaX1
+        y0 = SIZE // 2 + deltaY1
+        r0 = RIM_1//2 + 1
+        
+        def paint(alpha, beta, color):
+            deltaX0 = -math.sin(beta)*math.sin(alpha)*r0
+            deltaY0 = math.cos(beta)*r0
+
+            deltaX2 = int(deltaX0 * math.cos(angle) - deltaY0 * math.sin(angle))
+            deltaY2 = int(deltaX0 * math.sin(angle) + deltaY0 * math.cos(angle))
+            
+            painter.setPen(color)
+            painter.drawPoint(x0 + deltaX2, y0 + deltaY2)
+        
+        for indexBeta in range(int(betaResolution)):
+            beta = math.pi / betaResolution * indexBeta
+            
+            for indexAlpha in range(int(MOON.phase/100.0 * alphaResolution+0.5)):
+                alpha = math.pi / alphaResolution * indexAlpha + 0.5 * math.pi
+                paint(alpha, beta, Qt.white)
+        
+        for indexBeta in range(int(betaResolution)):
+            beta = math.pi / betaResolution * indexBeta
+            paint(0.5 * math.pi, beta, Qt.black)
+            paint(math.pi + 0.5 * math.pi, beta, Qt.black)
+            
         painter.end()
 
 
