@@ -105,11 +105,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(self.label)
         self.drawBackground()
         self.drawZodiac()
-        if SHOW_PLANETS:
-            self.drawPlanets()
         self.drawMoonNodes()
+        if SHOW_PLANETS:
+            self.drawPlanetsAndSun()
+        else:
+            self.drawSun()
         self.drawMoon()
-        self.drawSun()
         self.fillText()
         
     def clear(self):
@@ -566,10 +567,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
         painter.end()    
         
-    def drawPlanets(self):
+    def drawPlanetsAndSun(self):
         LOCATION.date = self.globalTime
-        painter = QtGui.QPainter(self.label.pixmap())
-        for (planet, symbol) in PLANETS:
+
+        def drawPlanet(planet, symbol):
+            painter = QtGui.QPainter(self.label.pixmap())
             planet.compute(LOCATION)
         
             raPlanet = planet.a_ra
@@ -626,8 +628,22 @@ class MainWindow(QtWidgets.QMainWindow):
             painter.rotate(angle * 180.0 / math.pi + 180.0)
             painter.drawText(-RIM_1//2, RIM_1//2, symbol)
             painter.restore()
+            painter.end()
+
+        celestialBodies = [(SUN.earth_distance, self.drawSun)]
+        for (planet, symbol) in PLANETS:
+            planet.compute(LOCATION)
+            def outer():
+                (planet1, symbol1) = (planet, symbol)
+                return lambda: drawPlanet(planet1, symbol1)
+            celestialBodies.append( (planet.earth_distance, outer()) )
+
+        celestialBodies.sort(key=lambda x: x[0], reverse=True)
         
-        painter.end()
+        for (distance, drawFunction) in celestialBodies:
+            drawFunction()
+
+        
           
 
         
