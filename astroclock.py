@@ -6,7 +6,7 @@ import sys
 import threading
 import time
 from PyQt5 import QtCore, QtGui, QtWidgets, uic 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import QPoint, Qt
 from sonneundmond import getLines
 
 def findRootByBisection(arg1, arg2, delta, f):
@@ -339,7 +339,23 @@ class MainWindow(QtWidgets.QMainWindow):
         radius = SIZE * (0.6 + decInDegree / 23.44 * DELTA_DECLINATION_SUN) / 2.0
         deltaX1 = int(math.sin(angle) * radius +0.5)
         deltaY1 = int(math.cos(angle) * radius +0.5)
-        painter.drawEllipse(SIZE // 2 - deltaX1 - RIM_1//2, SIZE // 2 + deltaY1 - RIM_1//2, RIM_1 - 1, RIM_1 - 1)
+
+        center = QPoint(SIZE // 2 - deltaX1, SIZE // 2 + deltaY1)
+        radius1 = RIM_1//2
+
+        # Fokuspunkt für schräge Beleuchtung von oben links
+        focal_point = QPoint(SIZE // 2 - deltaX1 - RIM_1//5, SIZE // 2 + deltaY1 - RIM_1//5)  # Verschoben nach oben links
+
+        # Radialer Gradient für goldene Farbe und Glanz
+        gradient = QtGui.QRadialGradient(focal_point, radius1, focal_point)
+        gradient.setColorAt(0.0, QtGui.QColor(255, 223, 186))  # Heller Goldton
+        gradient.setColorAt(0.4, QtGui.QColor(212, 175, 55))   # Mittlerer Goldton
+        gradient.setColorAt(0.8, QtGui.QColor(198, 155, 33))   # Dunkler Goldton
+        gradient.setColorAt(1.0, QtGui.QColor(184, 134, 11))    # Dunkler Rand
+
+        painter.setBrush(gradient)
+        painter.setPen(Qt.NoPen)
+        painter.drawEllipse(center, radius1, radius1)
         
         painter.end()
 
@@ -364,7 +380,23 @@ class MainWindow(QtWidgets.QMainWindow):
         radius = SIZE * (0.6 + decInDegree / 23.44 * DELTA_DECLINATION_SUN) / 2.0
         deltaX1 = int(math.sin(angle) * radius +0.5)
         deltaY1 = int(math.cos(angle) * radius +0.5)
-        painter.drawEllipse(SIZE // 2 - deltaX1 - RIM_1//2, SIZE // 2 + deltaY1 - RIM_1//2, RIM_1, RIM_1)
+
+        center = QPoint(SIZE // 2 - deltaX1, SIZE // 2 + deltaY1)
+        radius1 = RIM_1 // 2
+
+        # Fokuspunkt für schräge Beleuchtung von oben links
+        focal_point = QPoint(SIZE // 2 - deltaX1 - RIM_1//5, SIZE // 2 + deltaY1 - RIM_1//5)  # Verschoben nach oben links
+
+        # Radialer Gradient für goldene Farbe und Glanz
+        gradient = QtGui.QRadialGradient(focal_point, radius1, focal_point)
+        gradient.setColorAt(0.0, QtGui.QColor(223, 223, 223))  
+        gradient.setColorAt(0.4, QtGui.QColor(175, 175, 175))   
+        gradient.setColorAt(0.8, QtGui.QColor(155, 155, 155))   
+        gradient.setColorAt(1.0, QtGui.QColor(134, 134, 134))   
+
+        painter.setBrush(gradient)
+        painter.setPen(Qt.NoPen)
+        painter.drawEllipse(center, radius1, radius1)
         
         alphaResolution = 100.0
         betaResolution = 100.0
@@ -548,9 +580,30 @@ class MainWindow(QtWidgets.QMainWindow):
             deltaX1 = int(math.sin(angle) * radius +0.5)
             deltaY1 = int(math.cos(angle) * radius +0.5)
             painter.setPen(Qt.PenStyle(Qt.SolidLine))
+
+
+            center = QPoint(SIZE // 2 - deltaX1, SIZE // 2 + deltaY1)
+            radius1 = RIM_PLANET // 2
+
+            # Fokuspunkt für schräge Beleuchtung von oben links
+            focal_point = QPoint(SIZE // 2 - deltaX1 - RIM_PLANET//5, SIZE // 2 + deltaY1 - RIM_PLANET//5)  # Verschoben nach oben links
+
+            # Radialer Gradient für goldene Farbe und Glanz
+            gradient = QtGui.QRadialGradient(focal_point, radius1, focal_point)
+            gradient.setColorAt(0.0, QtGui.QColor(223, 223, 223))  
+            gradient.setColorAt(0.4, QtGui.QColor(175, 175, 175))   
+            gradient.setColorAt(0.8, QtGui.QColor(155, 155, 155))   
+            gradient.setColorAt(1.0, QtGui.QColor(134, 134, 134))   
+
+            painter.setBrush(gradient)
+            painter.setPen(Qt.NoPen)
+            painter.drawEllipse(center, radius1, radius1)
             painter.drawEllipse(SIZE // 2 - deltaX1 - RIM_PLANET//2, SIZE // 2 + deltaY1 - RIM_PLANET//2, RIM_PLANET - 1, RIM_PLANET - 1)
             
-            
+            pen = QtGui.QPen()
+            pen.setColor(Qt.black)
+            pen.setWidth(1)
+            painter.setPen(pen)
             radius2 = SIZE * (0.6 + decInDegree / 23.44 * DELTA_DECLINATION_SUN) / 2.0 + RIM_1
             deltaX2 = int(math.sin(angle) * radius2+0.5)
             deltaY2 = int(math.cos(angle) * radius2+0.5)
