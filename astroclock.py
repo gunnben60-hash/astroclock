@@ -404,48 +404,45 @@ class MainWindow(QtWidgets.QMainWindow):
         x0 = SIZE // 2 - deltaX1
         y0 = SIZE // 2 + deltaY1
         r0 = RIM_1//2
-        
-        def paint(alpha, beta, r, color):
+
+        pixmap = self.label.pixmap()
+        img = pixmap.toImage()
+
+        painted = {}
+
+        def paint(alpha, beta, r):
             deltaX0 = -math.sin(beta)*math.sin(alpha)*r
             deltaY0 = math.cos(beta)*r
 
             deltaX2 = int(deltaX0 * math.cos(angle) - deltaY0 * math.sin(angle))
             deltaY2 = int(deltaX0 * math.sin(angle) + deltaY0 * math.cos(angle))
+
+            if (x0 + deltaX2, y0 + deltaY2) in painted:
+                return          
+            col = img.pixel(x0 + deltaX2, y0 + deltaY2)
+            col_rgb = QtGui.QColor(col).getRgb()
             
-            painter.setPen(color)
+            newgrayScale = col_rgb[0] - 100
+            newColor = QtGui.QColor(newgrayScale, newgrayScale, newgrayScale)
+            painter.setPen(newColor)
             painter.drawPoint(x0 + deltaX2, y0 + deltaY2)
+
+            painted[(x0 + deltaX2, y0 + deltaY2)] = True
+
+
         
         for indexBeta in range(int(betaResolution)):
             beta = math.pi / betaResolution * indexBeta
-            '''
-            if ephem.next_full_moon(self.globalTime) < ephem.next_new_moon(self.globalTime):
-                #zunehmend
-                for indexAlpha in range(int(MOON.phase/100.0 * alphaResolution+0.5)):
-                    alpha = math.pi / alphaResolution * indexAlpha + 0.5 * math.pi
-                    paint(alpha, beta, r0, Qt.white)
-            else:
-                #abnehmend
-                for indexAlpha in range(int(alphaResolution - MOON.phase/100.0 * alphaResolution+0.5), int(alphaResolution)):
-                    alpha = math.pi / alphaResolution * indexAlpha + 0.5 * math.pi
-                    paint(alpha, beta, r0, Qt.white)
-            '''
-            darkGray = QtGui.QColor(100, 100, 100)
             if ephem.next_full_moon(self.globalTime) < ephem.next_new_moon(self.globalTime):
                 #zunehmend
                 for indexAlpha in range(int(MOON.phase/100.0 * alphaResolution+0.5) + 1, int(alphaResolution)):
                     alpha = math.pi / alphaResolution * indexAlpha + 0.5 * math.pi
-                    paint(alpha, beta, r0, darkGray)
+                    paint(alpha, beta, r0)
             else:
                 #abnehmend
                 for indexAlpha in range(int(alphaResolution - MOON.phase/100.0 * alphaResolution+0.5)-1):
                     alpha = math.pi / alphaResolution * indexAlpha + 0.5 * math.pi
-                    paint(alpha, beta, r0, darkGray)
-        '''
-        for indexBeta in range(int(betaResolution)):
-            beta = math.pi / betaResolution * indexBeta
-            paint(0.5 * math.pi, beta, r0+1, Qt.black)
-            paint(math.pi + 0.5 * math.pi, beta, r0+1, Qt.black)
-        '''
+                    paint(alpha, beta, r0)
 
         painter.end()
 
