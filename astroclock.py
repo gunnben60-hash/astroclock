@@ -15,7 +15,6 @@ def findRootByBisection(arg1, arg2, delta, f):
         return argM
 
     y1 = f(arg1)
-    y2 = f(arg2)
     yM = f(argM)
 
     if (y1 > 0) == (yM > 0):
@@ -34,7 +33,7 @@ LON = 13.066667
 LAT = 50.75
 TIMEZONE = 'Europe/Berlin'
 SIMULATE = False
-SHOW_PLANETS = False
+SHOW_PLANETS = True
 SIMULATION_REDRAW_IN_S = 1
 SIMULATION_TIME_STEP_IN_S = 60
 CONFIG_FILE_NAME = 'astroclock.location'
@@ -114,18 +113,26 @@ class MainWindow(QtWidgets.QMainWindow):
                 x2 = event.x() - SIZE/2
                 y2 = event.y() - SIZE/2
                 theta2 = math.atan2(y2, x2)
-                self.globalTime = ephem.Date(self.globalTime.datetime() + datetime.timedelta(days=(theta2-theta1)/2.0/math.pi))
-                self.drawAll()
+                
+                timeShiftInDays = (theta2-theta1)/2.0/math.pi
+                if timeShiftInDays > 0.5:
+                    timeShiftInDays -= 1.0
+                now = self.globalTime.datetime()
+                result = now + datetime.timedelta(days=timeShiftInDays)
+                self.globalTime = ephem.Date(result)
+                    
+                self.drawAll(False)
                 self.update()
                             
         return super().eventFilter(obj, event)
         
-    def drawAll(self):
+    def drawAll(self, resetTime=True):
         global SIMULATE
-        if not SIMULATE or self.globalTime is None:
-            self.globalTime = ephem.now()
-        else:
-            self.globalTime = ephem.Date(self.globalTime.datetime() + datetime.timedelta(seconds=SIMULATION_TIME_STEP_IN_S))
+        if resetTime:
+            if not SIMULATE or self.globalTime is None:
+                self.globalTime = ephem.now()
+            else:
+                self.globalTime = ephem.Date(self.globalTime.datetime() + datetime.timedelta(seconds=SIMULATION_TIME_STEP_IN_S))
         #self.globalTime = ephem.Date(datetime.datetime(2025, 6, 25, 10, 7, 0))
         self.clear()
         self.setCentralWidget(self.label)

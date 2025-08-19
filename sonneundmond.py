@@ -3,7 +3,10 @@ import ephem #type: ignore
 import mondkalender
 import time
 
-from backports.zoneinfo import ZoneInfo
+try:
+    from zoneinfo import ZoneInfo
+except:
+    from backports.zoneinfo import ZoneInfo
 
 def getLines(location, timezone, now=ephem.now()):
     sun = ephem.Sun()
