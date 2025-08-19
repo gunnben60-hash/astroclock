@@ -117,6 +117,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 timeShiftInDays = (theta2-theta1)/2.0/math.pi
                 if timeShiftInDays > 0.5:
                     timeShiftInDays -= 1.0
+                if timeShiftInDays < -0.5:
+                    timeShiftInDays += 1.0
                 now = self.globalTime.datetime()
                 result = now + datetime.timedelta(days=timeShiftInDays)
                 self.globalTime = ephem.Date(result)
