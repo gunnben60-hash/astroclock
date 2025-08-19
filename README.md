@@ -15,7 +15,7 @@ Eine ausführbare Datei liegt hier:
 
 Diese wurde mit Pyinstaller gebaut:
 
-    >pyinstaller .\astroclock.py --onefile --windowed
+    >pyinstaller .\astroclock.py --icon=astroclock.ico --onefile --windowed
 
 
 Beim erstmaligen Ausführen wird das Konfig-File 

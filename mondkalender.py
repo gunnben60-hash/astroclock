@@ -1,6 +1,6 @@
 import datetime
 import ephem
-from zoneinfo import ZoneInfo
+from backports.zoneinfo import ZoneInfo
 
 class MoonCalendar:
     def __init__(self, year=datetime.datetime.now().year):

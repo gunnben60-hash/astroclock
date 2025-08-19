@@ -6,7 +6,7 @@ import sys
 import threading
 import time
 from PyQt5 import QtCore, QtGui, QtWidgets, uic 
-from PyQt5.QtCore import QPoint, Qt
+from PyQt5.QtCore import QEvent, QPoint, Qt
 from sonneundmond import getLines
 
 def findRootByBisection(arg1, arg2, delta, f):
@@ -36,7 +36,7 @@ TIMEZONE = 'Europe/Berlin'
 SIMULATE = False
 SHOW_PLANETS = False
 SIMULATION_REDRAW_IN_S = 1
-SIMULATION_TIME_STEP_IN_S = 3600
+SIMULATION_TIME_STEP_IN_S = 60
 CONFIG_FILE_NAME = 'astroclock.location'
 if os.path.exists(CONFIG_FILE_NAME):
     with open(CONFIG_FILE_NAME) as infile:
@@ -93,9 +93,35 @@ class MainWindow(QtWidgets.QMainWindow):
         self.label.setPixmap(canvas)
         self.globalTime = None
         
+        self.label.installEventFilter(self)
         self.drawAll()
+
+    def eventFilter(self, obj, event):
+        global SIMULATE
+        if event.type() == QEvent.MouseButtonPress:
+            if event.button() == Qt.LeftButton:
+                self.startMovement = (event.x(), event.y())
+            elif event.button() == Qt.RightButton:
+                SIMULATE = False
+                self.drawAll()
+                self.update()
+        elif event.type() == QEvent.MouseButtonRelease:
+            if event.button() == Qt.LeftButton:
+                SIMULATE = True
+                x1 = self.startMovement[0] - SIZE/2
+                y1 = self.startMovement[1] - SIZE/2
+                theta1 = math.atan2(y1, x1)
+                x2 = event.x() - SIZE/2
+                y2 = event.y() - SIZE/2
+                theta2 = math.atan2(y2, x2)
+                self.globalTime = ephem.Date(self.globalTime.datetime() + datetime.timedelta(days=(theta2-theta1)/2.0/math.pi))
+                self.drawAll()
+                self.update()
+                            
+        return super().eventFilter(obj, event)
         
     def drawAll(self):
+        global SIMULATE
         if not SIMULATE or self.globalTime is None:
             self.globalTime = ephem.now()
         else:
