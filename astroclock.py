@@ -9,6 +9,11 @@ from PyQt5 import QtCore, QtGui, QtWidgets, uic
 from PyQt5.QtCore import QEvent, QPoint, Qt
 from sonneundmond import getLines
 
+try:
+    from zoneinfo import ZoneInfo
+except:
+    from backports.zoneinfo import ZoneInfo
+
 def findRootByBisection(arg1, arg2, delta, f):
     argM = 0.5*(arg1 + arg2)
     if abs(arg1-arg2) < delta:
@@ -34,8 +39,9 @@ LAT = 50.75
 TIMEZONE = 'Europe/Berlin'
 SIMULATE = False
 SHOW_PLANETS = True
-SIMULATION_REDRAW_IN_S = 1
+SIMULATION_REDRAW_IN_S = 60
 SIMULATION_TIME_STEP_IN_S = 60
+SIMULATION_START_TIME = None
 CONFIG_FILE_NAME = 'astroclock.location'
 if os.path.exists(CONFIG_FILE_NAME):
     with open(CONFIG_FILE_NAME) as infile:
@@ -56,6 +62,9 @@ if os.path.exists(CONFIG_FILE_NAME):
                 SIMULATION_TIME_STEP_IN_S = int(zeile[1])
             elif zeile[0].upper() == 'SHOW_PLANETS':
                 SHOW_PLANETS = (zeile[1].lower() == 'true')
+            elif zeile[0].upper() == 'SIMULATION_START_TIME':
+                SIMULATION_START_TIME = datetime.datetime.strptime(zeile[1], '%y-%m-%d %H:%M:%S')
+                SIMULATION_START_TIME = SIMULATION_START_TIME.astimezone(ZoneInfo(TIMEZONE))
 else:
     with open(CONFIG_FILE_NAME, 'w') as outfile:
         outfile.write('LON='+str(LON)+'\n')
@@ -65,6 +74,7 @@ else:
         outfile.write('SIMULATION_REDRAW_IN_S='+str(SIMULATION_REDRAW_IN_S)+'\n')
         outfile.write('SIMULATION_TIME_STEP_IN_S='+str(SIMULATION_TIME_STEP_IN_S)+'\n')
         outfile.write('SHOW_PLANETS='+str(SHOW_PLANETS)+'\n')
+        outfile.write('SIMULATION_START_TIME=' + datetime.datetime.now(ZoneInfo(TIMEZONE)).strftime('%y-%m-%d %H:%M:%S'))
 
 LOCATION = ephem.Observer()
 LOCATION.lon, LOCATION.lat  = str(LON), str(LAT)
@@ -130,12 +140,16 @@ class MainWindow(QtWidgets.QMainWindow):
         
     def drawAll(self, resetTime=True):
         global SIMULATE
+        if self.globalTime is None:
+            if not SIMULATE or SIMULATION_START_TIME is None:
+                self.globalTime = ephem.now()
+            else:
+                self.globalTime = ephem.Date(SIMULATION_START_TIME)
         if resetTime:
-            if not SIMULATE or self.globalTime is None:
+            if not SIMULATE:
                 self.globalTime = ephem.now()
             else:
                 self.globalTime = ephem.Date(self.globalTime.datetime() + datetime.timedelta(seconds=SIMULATION_TIME_STEP_IN_S))
-        #self.globalTime = ephem.Date(datetime.datetime(2025, 6, 25, 10, 7, 0))
         self.clear()
         self.setCentralWidget(self.label)
         self.drawBackground()
