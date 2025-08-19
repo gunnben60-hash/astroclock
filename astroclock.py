@@ -43,6 +43,7 @@ SIMULATION_REDRAW_IN_S = 60
 SIMULATION_TIME_STEP_IN_S = 60
 SIMULATION_START_TIME = None
 CONFIG_FILE_NAME = 'astroclock.location'
+DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 if os.path.exists(CONFIG_FILE_NAME):
     with open(CONFIG_FILE_NAME) as infile:
         data = infile.read().strip().split('\n')
@@ -63,7 +64,7 @@ if os.path.exists(CONFIG_FILE_NAME):
             elif zeile[0].upper() == 'SHOW_PLANETS':
                 SHOW_PLANETS = (zeile[1].lower() == 'true')
             elif zeile[0].upper() == 'SIMULATION_START_TIME':
-                SIMULATION_START_TIME = datetime.datetime.strptime(zeile[1], '%y-%m-%d %H:%M:%S')
+                SIMULATION_START_TIME = datetime.datetime.strptime(zeile[1], DATE_FORMAT)
                 SIMULATION_START_TIME = SIMULATION_START_TIME.astimezone(ZoneInfo(TIMEZONE))
 else:
     with open(CONFIG_FILE_NAME, 'w') as outfile:
@@ -74,7 +75,7 @@ else:
         outfile.write('SIMULATION_REDRAW_IN_S='+str(SIMULATION_REDRAW_IN_S)+'\n')
         outfile.write('SIMULATION_TIME_STEP_IN_S='+str(SIMULATION_TIME_STEP_IN_S)+'\n')
         outfile.write('SHOW_PLANETS='+str(SHOW_PLANETS)+'\n')
-        outfile.write('SIMULATION_START_TIME=' + datetime.datetime.now(ZoneInfo(TIMEZONE)).strftime('%y-%m-%d %H:%M:%S'))
+        outfile.write('SIMULATION_START_TIME=' + datetime.datetime.now(ZoneInfo(TIMEZONE)).strftime(DATE_FORMAT))
 
 LOCATION = ephem.Observer()
 LOCATION.lon, LOCATION.lat  = str(LON), str(LAT)
