@@ -8,48 +8,59 @@ try:
 except:
     from backports.zoneinfo import ZoneInfo
 
-def getLines(location, timezone, now=ephem.now()):
+def ephemDateToDatetimeAtTimeZone(ephemDate, timezone):
+    date = ephemDate.datetime()
+    return date + timezone.utcoffset(datetime.datetime.now())
+
+def datetimeToString(date: datetime, short=True):
+    if short:
+        return '%s:%s' %('{:02d}'.format(date.hour), '{:02d}'.format(date.minute))    
+    return '%s.%s.%s %s:%s' %('{:02d}'.format(date.day), '{:02d}'.format(date.month), '{:02d}'.format(date.year), '{:02d}'.format(date.hour), '{:02d}'.format(date.minute))
+
+def getLines(location, timezoneString, now=None):
     sun = ephem.Sun()
     moon = ephem.Moon()
-        
+    
+    timezone = ZoneInfo(timezoneString)
+    if now is None:
+        now = ephem.now()
     location.date = now
     nextNoon = location.next_transit(sun)
     lastNoon = location.previous_transit(sun)
-    yield 'Lokale Zeit:\t       '+ephem.to_timezone(now, ZoneInfo(timezone)).strftime('%d.%m.%y %H:%M:%S')
-    yield 'Wahre Sonnenzeit:\t'+(datetime.datetime(nextNoon.datetime().year, nextNoon.datetime().month, nextNoon.datetime().day, 12, 0, 0)
-        + datetime.timedelta(days=(now-nextNoon)/(nextNoon-lastNoon))).strftime('%H:%M:%S')
-    siderialTime = str(location.sidereal_time())[:-3]
-    if siderialTime[1] == ':':
-        siderialTime = '0' + siderialTime
-    yield 'Sternzeit:\t\t'+siderialTime
-    yield 'UTC:\t\t\t'+ephem.to_timezone(now, datetime.timezone.utc).strftime('%H:%M:%S')
-    yield ''
-    
+    yield 'Lokale Zeit:\t       '+datetimeToString(ephemDateToDatetimeAtTimeZone(now, timezone), False)
+    yield 'Wahre Sonnenzeit:\t'+datetimeToString(datetime.datetime(nextNoon.datetime().year, nextNoon.datetime().month, nextNoon.datetime().day, 12, 0, 0) + datetime.timedelta(days=(now-nextNoon)/(nextNoon-lastNoon)))
     try:
-        location.date = ephem.date(ephem.localtime(now).replace(hour=0, minute=0, second=0))
+        siderialTime = str(location.sidereal_time())[:-6]
+        if siderialTime[1] == ':':
+            siderialTime = '0' + siderialTime
+        yield 'Sternzeit:\t\t'+siderialTime
+        yield 'UTC:\t\t\t'+datetimeToString(ephemDateToDatetimeAtTimeZone(now, datetime.timezone.utc))
+        yield ''
+    
+        location.date = ephem.date(ephemDateToDatetimeAtTimeZone(now, timezone).replace(hour=0, minute=0, second=0))
         sunrisetoday = location.next_rising(sun)
         noonToday = location.next_transit(sun)
         sunsetToday = location.next_setting(sun)
-        yield 'Sonnenaufgang:\t\t'+ephem.to_timezone(sunrisetoday, ZoneInfo('Europe/Berlin')).strftime('%H:%M:%S')
-        yield 'Mittag:\t\t\t'+ephem.to_timezone(noonToday, ZoneInfo('Europe/Berlin')).strftime('%H:%M:%S')
-        yield 'Sonnenuntergang:\t'+ephem.to_timezone(sunsetToday, ZoneInfo('Europe/Berlin')).strftime('%H:%M:%S')+' ('+str(sunsetToday.datetime()-sunrisetoday.datetime())[:-10]+'h Tag)'
+        yield 'Sonnenaufgang:\t\t'+datetimeToString(ephemDateToDatetimeAtTimeZone(sunrisetoday, timezone))
+        yield 'Mittag:\t\t\t'+datetimeToString(ephemDateToDatetimeAtTimeZone(noonToday, timezone))
+        yield 'Sonnenuntergang:\t'+datetimeToString(ephemDateToDatetimeAtTimeZone(sunsetToday, timezone))+' ('+str(sunsetToday.datetime()-sunrisetoday.datetime())[:-10]+'h Tag)'
         yield ''
 
-        calendar = mondkalender.MoonCalendar(year=ephem.localtime(now).year)
+        calendar = mondkalender.MoonCalendar(year=ephemDateToDatetimeAtTimeZone(now, timezone).year)
 
         temp = 'abnehmend'
         if ephem.next_full_moon(now) < ephem.next_new_moon(now):
             temp = 'zunehmend'
         yield 'Monat (' + temp + '):\t'+calendar.getMonth(now)
         if ephem.next_full_moon(now) < ephem.next_new_moon(now):
-            yield 'nächster Vollmond:\t'+ephem.to_timezone(ephem.next_full_moon(now), ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S')
-            yield 'nächster Neumond:\t'+ephem.to_timezone(ephem.next_new_moon(now), ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S')
+            yield 'nächster Vollmond:\t'+datetimeToString(ephemDateToDatetimeAtTimeZone(ephem.next_full_moon(now), timezone), False)
+            yield 'nächster Neumond:\t'+datetimeToString(ephemDateToDatetimeAtTimeZone(ephem.next_new_moon(now), timezone), False)
         else:
-            yield 'nächster Neumond:\t'+ephem.to_timezone(ephem.next_new_moon(now), ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S')
-            yield 'nächster Vollmond:\t'+ephem.to_timezone(ephem.next_full_moon(now), ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S')
+            yield 'nächster Neumond:\t'+datetimeToString(ephemDateToDatetimeAtTimeZone(ephem.next_new_moon(now), timezone), False)
+            yield 'nächster Vollmond:\t'+datetimeToString(ephemDateToDatetimeAtTimeZone(ephem.next_full_moon(now), timezone), False)
         yield ''
 
-        location.date = ephem.date(ephem.localtime(now).replace(hour=0, minute=0, second=0))
+        location.date = ephem.date(ephemDateToDatetimeAtTimeZone(now, timezone).replace(hour=0, minute=0, second=0))
         moonriseToday = location.next_rising(moon)
         moonZenitToday = location.next_transit(moon)
         moonsetToday = location.next_setting(moon)
@@ -58,7 +69,7 @@ def getLines(location, timezone, now=ephem.now()):
                             (moonsetToday, 'Monduntergang:\t\t')], key=lambda x: x[0])
         for i in range(3):
             moon.compute(moonZenitToday)
-            outstring = tempList[i][1] + ephem.to_timezone(tempList[i][0], ZoneInfo('Europe/Berlin')).strftime('%H:%M:%S')
+            outstring = tempList[i][1] + datetimeToString(ephemDateToDatetimeAtTimeZone(tempList[i][0], timezone))
             if (tempList[i][1] == 'Monduntergang:\t\t'):
                 location.date = moonZenitToday
                 previousMoonrise = location.previous_rising(moon)
@@ -88,7 +99,7 @@ def main(stdscr):
     location.lon, location.lat  = '13.066667', '50.75'
     
     while True:
-        for i, line in enumerate(getLines(location)):
+        for i, line in enumerate(getLines(location, 'Europe/Berlin')):
             stdscr.addstr(i+1, 0, line)
             curses.curs_set(0) # hide cursor 
             stdscr.refresh()

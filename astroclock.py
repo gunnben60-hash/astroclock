@@ -28,7 +28,9 @@ def findRootByBisection(arg1, arg2, delta, f):
         return findRootByBisection(arg1, argM, delta, f)
 
    
-            
+def parseDateString(dateString, TIMEZONE):
+    temp = datetime.datetime.strptime(zeile[1], DATE_FORMAT)
+    return datetime.datetime(temp.year, temp.month, temp.day, temp.hour, temp.minute, temp.second, tzinfo=ZoneInfo(TIMEZONE))
 
 
 SUN = ephem.Sun()
@@ -64,8 +66,7 @@ if os.path.exists(CONFIG_FILE_NAME):
             elif zeile[0].upper() == 'SHOW_PLANETS':
                 SHOW_PLANETS = (zeile[1].lower() == 'true')
             elif zeile[0].upper() == 'SIMULATION_START_TIME':
-                SIMULATION_START_TIME = datetime.datetime.strptime(zeile[1], DATE_FORMAT)
-                SIMULATION_START_TIME = SIMULATION_START_TIME.astimezone(ZoneInfo(TIMEZONE))
+                SIMULATION_START_TIME = parseDateString(zeile[1], TIMEZONE)
 else:
     with open(CONFIG_FILE_NAME, 'w') as outfile:
         outfile.write('LON='+str(LON)+'\n')
@@ -146,6 +147,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.globalTime = ephem.now()
             else:
                 self.globalTime = ephem.Date(SIMULATION_START_TIME)
+
         if resetTime:
             if not SIMULATE:
                 self.globalTime = ephem.now()
@@ -183,8 +185,6 @@ class MainWindow(QtWidgets.QMainWindow):
         text = []
         counter = 0
         for line in getLines(LOCATION, TIMEZONE, self.globalTime):
-            if counter < 5 and ':' in line:
-                line = line[:-3]
             counter += 1
             zeile = []
             for word in line.split('\t'):
