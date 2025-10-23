@@ -111,13 +111,30 @@ class MainWindow(QtWidgets.QMainWindow):
         global SIMULATE
         if event.type() == QEvent.MouseButtonPress:
             if event.button() == Qt.LeftButton:
-                self.startMovement = (event.x(), event.y())
+                if event.y() <= RIM_1 and event.x() <= RIM_1:
+                    self.startMovement = None
+                    SIMULATE = True
+                    now = self.globalTime.datetime()
+                    result = now + datetime.timedelta(days=-1)
+                    self.globalTime = ephem.Date(result)
+                    self.drawAll(False)
+                    self.update()
+                elif event.y() <= RIM_1 and event.x() >= SIZE-RIM_1:
+                    self.startMovement = None
+                    SIMULATE = True
+                    now = self.globalTime.datetime()
+                    result = now + datetime.timedelta(days=1)
+                    self.globalTime = ephem.Date(result)
+                    self.drawAll(False)
+                    self.update()
+                else:
+                    self.startMovement = (event.x(), event.y())
             elif event.button() == Qt.RightButton:
                 SIMULATE = False
                 self.drawAll()
                 self.update()
         elif event.type() == QEvent.MouseButtonRelease:
-            if event.button() == Qt.LeftButton:
+            if event.button() == Qt.LeftButton and self.startMovement is not None:
                 SIMULATE = True
                 x1 = self.startMovement[0] - SIZE/2
                 y1 = self.startMovement[1] - SIZE/2
@@ -214,6 +231,9 @@ class MainWindow(QtWidgets.QMainWindow):
         font=QtGui.QFont()
         font.setPixelSize(20)
         painter.setFont(font)
+        
+        painter.drawText(RIM_1//4, RIM_1, '<')
+        painter.drawText(SIZE-RIM_1, RIM_1, '>')
         
         for i in range(24):
             angle = 2.0 * math.pi / 24.0 * i
