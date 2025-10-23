@@ -3,19 +3,12 @@ import ephem #type: ignore
 import mondkalender
 import time
 
+from mondkalender import ephemDateToDatetimeAtTimeZone, datetimeToString
+
 try:
     from zoneinfo import ZoneInfo
 except:
     from backports.zoneinfo import ZoneInfo
-
-def ephemDateToDatetimeAtTimeZone(ephemDate, timezone):
-    date = ephemDate.datetime()
-    return date + timezone.utcoffset(datetime.datetime.now())
-
-def datetimeToString(date: datetime, short=True):
-    if short:
-        return '%s:%s' %('{:02d}'.format(date.hour), '{:02d}'.format(date.minute))    
-    return '%s.%s.%s %s:%s' %('{:02d}'.format(date.day), '{:02d}'.format(date.month), '{:02d}'.format(date.year), '{:02d}'.format(date.hour), '{:02d}'.format(date.minute))
 
 def getLines(location, timezoneString, now=None):
     sun = ephem.Sun()

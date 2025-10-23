@@ -4,6 +4,15 @@ try:
     from zoneinfo import ZoneInfo
 except:
     from backports.zoneinfo import ZoneInfo
+    
+def ephemDateToDatetimeAtTimeZone(ephemDate, timezone):
+    date = ephemDate.datetime()
+    return date + timezone.utcoffset(datetime.datetime.now())
+
+def datetimeToString(date: datetime, short=True):
+    if short:
+        return '%s:%s' %('{:02d}'.format(date.hour), '{:02d}'.format(date.minute))    
+    return '%s.%s.%s %s:%s' %('{:02d}'.format(date.day), '{:02d}'.format(date.month), '{:02d}'.format(date.year), '{:02d}'.format(date.hour), '{:02d}'.format(date.minute))
 
 class MoonCalendar:
     def __init__(self, year=datetime.datetime.now().year):
@@ -55,7 +64,8 @@ class MoonCalendar:
             moon = ephem.Moon()
 
             outstring += name + '\t'
-            outstring += ephem.to_timezone(begin, ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S') + '\t'
+            #outstring += ephem.to_timezone(begin, ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S') + '\t'
+            outstring += datetimeToString(ephemDateToDatetimeAtTimeZone(begin, ZoneInfo('Europe/Berlin')), False) + '\t'
             
             nextFullMoon = ephem.next_full_moon(begin)
             location.date = nextFullMoon
@@ -72,8 +82,10 @@ class MoonCalendar:
             previousMoonrise = location.previous_rising(moon)
             nextMoonset = location.next_setting(moon)
             
-            outstring += ephem.to_timezone(nextFullMoon, ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S') + '\t'
-            outstring += ephem.to_timezone(relevantTransit, ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S') + '\t'
+            #outstring += ephem.to_timezone(nextFullMoon, ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S') + '\t'
+            outstring += datetimeToString(ephemDateToDatetimeAtTimeZone(nextFullMoon, ZoneInfo('Europe/Berlin')), False) + '\t'
+            #outstring += ephem.to_timezone(relevantTransit, ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S') + '\t'
+            outstring += datetimeToString(ephemDateToDatetimeAtTimeZone(relevantTransit, ZoneInfo('Europe/Berlin')), False) + '\t'
             outstring += str(nextMoonset.datetime()-previousMoonrise.datetime())[:-10]+'h\t'
 
             moon.compute(nextFullMoon)
@@ -95,6 +107,76 @@ if __name__ == '__main__':
 
     #print(moon.phase)
 
+    goldenNumbers = {'03':{}, '04':{}}
+    goldenNumbers['04']['14'] = 1
+    goldenNumbers['04']['03'] = 2
+    goldenNumbers['03']['23'] = 3
+    goldenNumbers['04']['11'] = 4
+    goldenNumbers['03']['31'] = 5
+    goldenNumbers['04']['19'] = 6
+    goldenNumbers['04']['08'] = 7
+    goldenNumbers['03']['28'] = 8
+    goldenNumbers['04']['16'] = 9
+    goldenNumbers['04']['05'] = 10
+    goldenNumbers['03']['25'] = 11
+    goldenNumbers['04']['13'] = 12
+    goldenNumbers['04']['02'] = 13
+    goldenNumbers['03']['22'] = 14
+    goldenNumbers['04']['10'] = 15
+    goldenNumbers['03']['30'] = 16
+    goldenNumbers['04']['18'] = 17
+    goldenNumbers['04']['07'] = 18
+    goldenNumbers['03']['27'] = 19
+    print(len(goldenNumbers['04']) + len(goldenNumbers['03']))
+
+    neumondTermine = {}
+    vollmondTermine = {}
+    frühlingsMonde = {}
+    for i in range(1900, 2200):
+        yearstring  = "{:04d}".format(i) 
+        calendar = MoonCalendar(i)
+        result = calendar.generateMoonCalender(location)
+        for line in result.split('\n'):
+            zeile = line.split('\t')
+            if len(zeile) < 2:
+                continue
+            neumond = zeile[1]
+            vollmond = zeile[2]
+            if '.'+yearstring+' ' in neumond:
+                day, month, year = neumond.split(' ')[0].split('.')
+                if not month in neumondTermine:
+                    neumondTermine[month] = {}
+                if not day in neumondTermine[month]:
+                    neumondTermine[month][day] = []
+                neumondTermine[month][day].append(neumond)
+            if '.'+yearstring+' ' in vollmond:
+                day, month, year = vollmond.split(' ')[0].split('.')
+                if not month in vollmondTermine:
+                    vollmondTermine[month] = {}
+                if not day in vollmondTermine[month]:
+                    vollmondTermine[month][day] = []
+                vollmondTermine[month][day].append(vollmond)
+                if (int(month) == 3 and int(day) >= 21) or (int(month) == 4 and int(day) <= 18):
+                    if not month in frühlingsMonde:
+                        frühlingsMonde[month] = {}
+                    if not day in frühlingsMonde[month]:
+                        frühlingsMonde[month][day] = []
+                    frühlingsMonde[month][day].append(vollmond)
     
+    outstring = 'Datum\tgoldene Zahl\tAnzahl\n'
+    for month in sorted(frühlingsMonde.keys()):
+        for day in sorted(frühlingsMonde[month].keys()):
+            outstring += day + '.' + month + '\t'
+            if day in goldenNumbers[month]:
+                outstring += str(goldenNumbers[month][day]) + '\t'
+            else:
+                outstring += '\t'
+            outstring += str(len(frühlingsMonde[month][day])) + '\n'
+    with open('Frühlingsmonde.txt', 'w') as outfile:
+        outfile.write(outstring)
+
+    pass
+    '''
     with open('2025.txt', 'w') as outfile:
         outfile.write(calendar.generateMoonCalender(location))
+    '''
