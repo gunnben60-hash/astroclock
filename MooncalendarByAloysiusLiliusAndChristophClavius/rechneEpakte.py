@@ -271,7 +271,7 @@ for year in range(1970, 2100):
     
     value1 = getFrühlingsvollmondNachEpakte(year)
     value2 = getFrühlingsvollmondNachClaviusLilius(year)
-    print(year, value1, value2, 'error' if value1 != value2 else '', S, L)
+    #print(year, value1, value2, 'error' if value1 != value2 else '', S, L)
 
 
 
@@ -288,15 +288,13 @@ for year in range(1970, 2100):
     for vollmond in getVollmondeNachClaviusLilius(year):
         if not vollmond in countVollmonde:
             countVollmonde[vollmond] = 0
-        if vollmond == (25, 11):
-            print('HIER', year)
         countVollmonde[vollmond] += 1
 
 with open('result.txt', 'w') as outfile:
     outfile.write(outstring)
     
 year = 2033  
-print([x for x in getVollmondeNachClaviusLilius(year)])    
+#print([x for x in getVollmondeNachClaviusLilius(year)])    
 pass
 
 
@@ -323,8 +321,8 @@ for year in range(2000, 2019):
     if goldenNumber == 0:
         goldenNumber = 19
     previousMonth = 0
-    for neumond in getVollmondeNachClaviusLilius(year):
-        day, month = neumond
+    for vollmond in getVollmondeNachClaviusLilius(year):
+        day, month = vollmond
         if month < previousMonth:
             goldenNumber += 1
         previousMonth = month

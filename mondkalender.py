@@ -1,5 +1,7 @@
 import datetime
+import math
 import ephem
+from MooncalendarByAloysiusLiliusAndChristophClavius.rechneEpakte import getVollmondeNachClaviusLilius
 try:
     from zoneinfo import ZoneInfo
 except:
@@ -53,18 +55,101 @@ class MoonCalendar:
             self.months.append((self.months[-1][1], ephem.next_new_moon(ephem.date(self.months[-1][1].datetime()+datetime.timedelta(days=1))), 'Wintermond %s' %number)) 
             number += 1
         
+        currYear = year-1
+        self.vollmondeLiliusClavius = []
+        prevMonth = 0
+        for count in range(3): # einen genügend großen Bereich generieren
+            for day, month in getVollmondeNachClaviusLilius(currYear):
+                if month < prevMonth:
+                    currYear += 1
+                prevMonth = month
+                self.vollmondeLiliusClavius.append( (day, month, currYear) )
+        
     def getMonth(self, ephemDate=ephem.now()):
         for i in range(len(self.months)):
             if self.months[i+1][0] >= ephemDate:
                 return self.months[i][2]
             
+    def getBabylonianMonthLiliusClavius(self, ephemDate=ephem.now()):
+        for i in range(len(self.months)):
+            if self.months[i+1][0] >= ephemDate:
+                return self.getBabylonianMonthNameLiliusClavius(self.months[i][0])
+    
+    @classmethod   
+    def getBabylonianMonthNameAstronomical(cls, beginOfMonth, checkForLeapMonth=True):
+        # dieses Konzept funktioniert nicht, weil der Abstand zwischen zwei astronomischen Vollmonden tatsächlich manchmal größer als ein 1/12 Jahr sein kann und damit Monate übersprungen werden
+        location = ephem.Observer()
+        location.lon, location.lat  = '13.066667', '50.75' # Ergebnis sollte unabhängig von der Position sein
+        nextFullMoon = ephem.next_full_moon(beginOfMonth)
+        location.date = nextFullMoon
+        sun = ephem.Sun()
+        sun.compute(location)
+        
+        bla = float(sun.a_ra)
+        index = int(float(sun.a_ra) * 12.0 / 2.0 / math.pi)
+        monthName = ['Nisannu', 'Ajaru', 'Simanu', 'Du\'uzu', 'Abu', 'Ululu', 'Tašritu', 'Araḫsamna', 'Kislimu', 'Tebetu', 'Šabatu', 'Addaru',][index]
+        if not checkForLeapMonth:
+            return monthName
+        monthNameBefore = cls.getBabylonianMonthNameAstronomical(beginOfMonth-28.0, False)
+        if monthNameBefore == monthName:
+            return monthName + ' 2'
+        monthNameAfter = cls.getBabylonianMonthNameAstronomical(beginOfMonth+28.0, False)
+        if monthNameAfter == monthName:
+            return monthName + ' 1'
+        return monthName  
+    
+    def getBabylonianMonthNameLiliusClavius(self, beginOfMonth, checkForLeapMonth=True):
+        beginOfMonthDatetime = ephemDateToDatetimeAtTimeZone(beginOfMonth, ZoneInfo('Europe/Berlin'))
+        for (day, month, year) in self.vollmondeLiliusClavius:
+            compareDatetime = datetime.datetime(year=year, month=month, day=day)
+            if compareDatetime > beginOfMonthDatetime:
+                break
+        
+        if (month == 3 and day >= 21) or (month == 4 and day <= 20):
+            monthName = 'Nisannu'
+        elif (month == 4 and day >= 21) or (month == 5 and day <= 21):
+            monthName = 'Ajaru'
+        elif (month == 5 and day >= 22) or (month == 6 and day <= 21):
+            monthName = 'Simanu'
+        elif (month == 6 and day >= 22) or (month == 7 and day <= 23):
+            monthName = 'Du\'uzu'
+        elif (month == 7 and day >= 23) or (month == 8 and day <= 22):
+            monthName = 'Abu'
+        elif (month == 8 and day >= 23) or (month == 9 and day <= 22):
+            monthName = 'Ululu'
+        elif (month == 9 and day >= 23) or (month == 10 and day <= 22):
+            monthName = 'Tašritu'
+        elif (month == 10 and day >= 23) or (month == 11 and day <= 22):
+            monthName = 'Araḫsamna'
+        elif (month == 11 and day >= 23) or (month == 12 and day <= 20):
+            monthName = 'Kislimu'
+        elif (month == 12 and day >= 21) or (month == 1 and day <= 19):
+            monthName = 'Tebetu'
+        elif (month == 1 and day >= 20) or (month == 2 and day <= 18):
+            monthName = 'Šabatu'
+        elif (month == 2 and day >= 19) or (month == 3 and day <= 20):
+            monthName = 'Addaru'
+        else:
+            print('Fehler', day, month)
+        
+        if not checkForLeapMonth:
+            return monthName
+        monthNameBefore = self.getBabylonianMonthNameLiliusClavius(ephem.Date(beginOfMonth-28.0), False)
+        if monthNameBefore == monthName:
+            return monthName + ' 2'
+        monthNameAfter = self.getBabylonianMonthNameLiliusClavius(ephem.Date(beginOfMonth+28.0), False)
+        if monthNameAfter == monthName:
+            return monthName + ' 1'
+        return monthName  
+    
+          
     def generateMoonCalender(self, location) -> str:
-        outstring = 'Monat\tNeumond\tVollmond\tvollster Mond\tLänge des Mondtages bei Vollmond\tMondhelligkeit\n'
+        outstring = 'Monat\tbabyl. Name\tNeumond\tVollmond\tvollster Mond\tLänge des Mondtages bei Vollmond\tMondhelligkeit\n'
         for (begin, end, name) in self.months:
             moon = ephem.Moon()
 
             outstring += name + '\t'
-            #outstring += ephem.to_timezone(begin, ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S') + '\t'
+            outstring += self.getBabylonianMonthNameLiliusClavius(begin) + '\t'
             outstring += datetimeToString(ephemDateToDatetimeAtTimeZone(begin, ZoneInfo('Europe/Berlin')), False) + '\t'
             
             nextFullMoon = ephem.next_full_moon(begin)
@@ -98,85 +183,12 @@ class MoonCalendar:
 
       
 if __name__ == '__main__':
-    calendar = MoonCalendar()
-    print(calendar.getMonth())
-    
+    calendar = MoonCalendar(2026)
+   
     #Zschopau
     location = ephem.Observer()
     location.lon, location.lat  = '13.066667', '50.75'
 
-    #print(moon.phase)
-
-    goldenNumbers = {'03':{}, '04':{}}
-    goldenNumbers['04']['14'] = 1
-    goldenNumbers['04']['03'] = 2
-    goldenNumbers['03']['23'] = 3
-    goldenNumbers['04']['11'] = 4
-    goldenNumbers['03']['31'] = 5
-    goldenNumbers['04']['19'] = 6
-    goldenNumbers['04']['08'] = 7
-    goldenNumbers['03']['28'] = 8
-    goldenNumbers['04']['16'] = 9
-    goldenNumbers['04']['05'] = 10
-    goldenNumbers['03']['25'] = 11
-    goldenNumbers['04']['13'] = 12
-    goldenNumbers['04']['02'] = 13
-    goldenNumbers['03']['22'] = 14
-    goldenNumbers['04']['10'] = 15
-    goldenNumbers['03']['30'] = 16
-    goldenNumbers['04']['18'] = 17
-    goldenNumbers['04']['07'] = 18
-    goldenNumbers['03']['27'] = 19
-    print(len(goldenNumbers['04']) + len(goldenNumbers['03']))
-
-    neumondTermine = {}
-    vollmondTermine = {}
-    frühlingsMonde = {}
-    for i in range(1900, 2200):
-        yearstring  = "{:04d}".format(i) 
-        calendar = MoonCalendar(i)
-        result = calendar.generateMoonCalender(location)
-        for line in result.split('\n'):
-            zeile = line.split('\t')
-            if len(zeile) < 2:
-                continue
-            neumond = zeile[1]
-            vollmond = zeile[2]
-            if '.'+yearstring+' ' in neumond:
-                day, month, year = neumond.split(' ')[0].split('.')
-                if not month in neumondTermine:
-                    neumondTermine[month] = {}
-                if not day in neumondTermine[month]:
-                    neumondTermine[month][day] = []
-                neumondTermine[month][day].append(neumond)
-            if '.'+yearstring+' ' in vollmond:
-                day, month, year = vollmond.split(' ')[0].split('.')
-                if not month in vollmondTermine:
-                    vollmondTermine[month] = {}
-                if not day in vollmondTermine[month]:
-                    vollmondTermine[month][day] = []
-                vollmondTermine[month][day].append(vollmond)
-                if (int(month) == 3 and int(day) >= 21) or (int(month) == 4 and int(day) <= 18):
-                    if not month in frühlingsMonde:
-                        frühlingsMonde[month] = {}
-                    if not day in frühlingsMonde[month]:
-                        frühlingsMonde[month][day] = []
-                    frühlingsMonde[month][day].append(vollmond)
-    
-    outstring = 'Datum\tgoldene Zahl\tAnzahl\n'
-    for month in sorted(frühlingsMonde.keys()):
-        for day in sorted(frühlingsMonde[month].keys()):
-            outstring += day + '.' + month + '\t'
-            if day in goldenNumbers[month]:
-                outstring += str(goldenNumbers[month][day]) + '\t'
-            else:
-                outstring += '\t'
-            outstring += str(len(frühlingsMonde[month][day])) + '\n'
-    with open('Frühlingsmonde.txt', 'w') as outfile:
-        outfile.write(outstring)
-
-    pass
-    '''
-    with open('2025.txt', 'w') as outfile:
+    with open('2026.txt', 'w', encoding='utf-8') as outfile:
         outfile.write(calendar.generateMoonCalender(location))
-    '''
+    
