@@ -58,8 +58,8 @@ class MoonCalendar:
         currYear = year-1
         self.vollmondeLiliusClavius = []
         prevMonth = 0
-        for count in range(3): # einen genügend großen Bereich generieren
-            for day, month in getVollmondeNachClaviusLilius(currYear):
+        for yearCall in range(year-1, year+2): # einen genügend großen Bereich generieren
+            for day, month in [x for x in getVollmondeNachClaviusLilius(yearCall)]:
                 if month < prevMonth:
                     currYear += 1
                 prevMonth = month
@@ -104,7 +104,7 @@ class MoonCalendar:
             compareDatetime = datetime.datetime(year=year, month=month, day=day)
             if compareDatetime > beginOfMonthDatetime:
                 break
-        
+       
         if (month == 3 and day >= 21) or (month == 4 and day <= 20):
             monthName = 'Nisannu'
         elif (month == 4 and day >= 21) or (month == 5 and day <= 21):
@@ -183,12 +183,13 @@ class MoonCalendar:
 
       
 if __name__ == '__main__':
-    calendar = MoonCalendar(2026)
+    year = 2029
+    calendar = MoonCalendar(year)
    
     #Zschopau
     location = ephem.Observer()
     location.lon, location.lat  = '13.066667', '50.75'
 
-    with open('2026.txt', 'w', encoding='utf-8') as outfile:
+    with open('%s.txt' %year, 'w', encoding='utf-8') as outfile:
         outfile.write(calendar.generateMoonCalender(location))
     
