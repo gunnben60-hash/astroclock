@@ -29,10 +29,10 @@ class MoonCalendar:
         
         self.months = []
         referencedate = ephem.next_full_moon(self.previousWinterSolstice)
-        self.months.append((ephem.previous_new_moon(referencedate), ephem.next_new_moon(referencedate), 'letzter Wintermond')) 
+        self.months.append((ephem.previous_new_moon(referencedate), ephem.next_new_moon(referencedate), 'Wintermond')) 
         number = 2
         while ephem.next_full_moon(self.months[-1][1]) <= self.springEquinox:
-            self.months.append((self.months[-1][1], ephem.next_new_moon(ephem.date(self.months[-1][1].datetime()+datetime.timedelta(days=1))), 'letzer Wintermond %s' %number)) 
+            self.months.append((self.months[-1][1], ephem.next_new_moon(ephem.date(self.months[-1][1].datetime()+datetime.timedelta(days=1))), 'Wintermond %s' %number)) 
             number += 1
         self.months.append((self.months[-1][1], ephem.next_new_moon(ephem.date(self.months[-1][1].datetime()+datetime.timedelta(days=1))), 'Frühlingsmond')) 
         number = 2
