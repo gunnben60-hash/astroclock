@@ -44,7 +44,9 @@ def getLines(location, timezoneString, now=None):
         temp = 'abnehmend'
         if ephem.next_full_moon(now) < ephem.next_new_moon(now):
             temp = 'zunehmend'
-        yield 'Monat (' + temp + '):\t'+calendar.getMonth(now) + ', ' + calendar.getBabylonianMonthLiliusClavius(now)
+        dateTuple = now.tuple()
+            
+        yield 'Monat (' + temp + '):\t'+calendar.getMonth(now) + ', ' + calendar.getBabylonianMonthLiliusClavius(now) + calendar.getHijriMonthName(dateTuple[0], dateTuple[1], dateTuple[2])
         if ephem.next_full_moon(now) < ephem.next_new_moon(now):
             yield 'nächster Vollmond:\t'+datetimeToString(ephemDateToDatetimeAtTimeZone(ephem.next_full_moon(now), timezone), False)
             yield 'nächster Neumond:\t'+datetimeToString(ephemDateToDatetimeAtTimeZone(ephem.next_new_moon(now), timezone), False)

@@ -1,6 +1,8 @@
 import datetime
 import math
 import ephem
+from hijridate import Hijri, Gregorian
+
 from MooncalendarByAloysiusLiliusAndChristophClavius.rechneEpakte import getVollmondeNachClaviusLilius
 try:
     from zoneinfo import ZoneInfo
@@ -96,7 +98,16 @@ class MoonCalendar:
         monthNameAfter = cls.getBabylonianMonthNameAstronomical(beginOfMonth+28.0, False)
         if monthNameAfter == monthName:
             return monthName + ' 1'
-        return monthName  
+        return monthName
+    
+    @classmethod
+    def getHijriMonthName(cls, year, month, day):
+        temp = Gregorian(year, month, day)
+        try:
+            todayHijri = temp.to_hijri()
+        except:
+            return ''
+        return ', ' + ['مُحَرَّمٌ', 'صَفَرٌ', 'ربِيع الأوَّل', 'ربِع الثَّاني', 'جُمادَى الأُولَى', 'جُمادَى الآخِرة', 'رجبٌ', 'شعْبانُ', 'رمضانُ', 'شوَّالٌ', 'ذو القَعْدة', 'ذو الحِجَّةِ'][todayHijri.month - 1]
     
     def getBabylonianMonthNameLiliusClavius(self, beginOfMonth, checkForLeapMonth=True):
         beginOfMonthDatetime = ephemDateToDatetimeAtTimeZone(beginOfMonth, ZoneInfo('Europe/Berlin'))
@@ -147,9 +158,11 @@ class MoonCalendar:
         outstring = 'Monat\tbabyl. Name\tNeumond\tVollmond\tvollster Mond\tLänge des Mondtages bei Vollmond\tMondhelligkeit\n'
         for (begin, end, name) in self.months:
             moon = ephem.Moon()
-
+            
+            dateTuple = (begin + 5).tuple()
+            
             outstring += name + '\t'
-            outstring += self.getBabylonianMonthNameLiliusClavius(begin) + '\t'
+            outstring += self.getBabylonianMonthNameLiliusClavius(begin) + self.getHijriMonthName(dateTuple[0], dateTuple[1], dateTuple[2]) + '\t'
             outstring += datetimeToString(ephemDateToDatetimeAtTimeZone(begin, ZoneInfo('Europe/Berlin')), False) + '\t'
             
             nextFullMoon = ephem.next_full_moon(begin)
@@ -167,9 +180,7 @@ class MoonCalendar:
             previousMoonrise = location.previous_rising(moon)
             nextMoonset = location.next_setting(moon)
             
-            #outstring += ephem.to_timezone(nextFullMoon, ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S') + '\t'
             outstring += datetimeToString(ephemDateToDatetimeAtTimeZone(nextFullMoon, ZoneInfo('Europe/Berlin')), False) + '\t'
-            #outstring += ephem.to_timezone(relevantTransit, ZoneInfo('Europe/Berlin')).strftime('%d.%m.%y %H:%M:%S') + '\t'
             outstring += datetimeToString(ephemDateToDatetimeAtTimeZone(relevantTransit, ZoneInfo('Europe/Berlin')), False) + '\t'
             outstring += str(nextMoonset.datetime()-previousMoonrise.datetime())[:-10]+'h\t'
 
@@ -183,7 +194,7 @@ class MoonCalendar:
 
       
 if __name__ == '__main__':
-    year = 2029
+    year = 2032
     calendar = MoonCalendar(year)
    
     #Zschopau
