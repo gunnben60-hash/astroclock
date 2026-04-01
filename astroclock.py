@@ -97,6 +97,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('astroclock')
+        
+        self.setWindowTitle('Horologium Astronomicum')
 
         self.label = QtWidgets.QLabel()
         canvas = QtGui.QPixmap(SIZE, SIZE + TEXT_HEIGHT)
