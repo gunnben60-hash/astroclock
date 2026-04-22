@@ -96,9 +96,8 @@ DELTA_DECLINATION_SUN = 0.2
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('astroclock')
         
-        self.setWindowTitle('Astrolab')
+        self.setWindowTitle('Astrologion')
 
         self.label = QtWidgets.QLabel()
         canvas = QtGui.QPixmap(SIZE, SIZE + TEXT_HEIGHT)
