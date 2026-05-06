@@ -290,8 +290,10 @@ for year in range(1970, 2100):
             countVollmonde[vollmond] = 0
         countVollmonde[vollmond] += 1
 
+'''
 with open('result.txt', 'w') as outfile:
     outfile.write(outstring)
+'''
     
 year = 2033  
 #print([x for x in getVollmondeNachClaviusLilius(year)])    
@@ -341,5 +343,7 @@ for month in range(1,13):
         outstring += '{:02d}'.format(i+1) + calendar[month][i] + '\n'
     outstring += '\n\n'
 
+'''
 with open('calendar.txt', 'w', encoding='utf8') as outfile:
     outfile.write(outstring)
+'''

@@ -725,7 +725,7 @@ window = MainWindow()
 def saveImage():
     imageVar = QtGui.QImage(window.size(), QtGui.QImage.Format.Format_ARGB32)
     window.render(imageVar)
-    imageVar.save("astroclock.png")
+    #imageVar.save("astroclock.png")
 
 def redraw():
     window.drawAll()
