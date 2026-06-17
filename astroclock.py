@@ -29,7 +29,7 @@ def findRootByBisection(arg1, arg2, delta, f):
 
    
 def parseDateString(dateString, TIMEZONE):
-    temp = datetime.datetime.strptime(zeile[1], DATE_FORMAT)
+    temp = datetime.datetime.strptime(dateString, DATE_FORMAT)
     return datetime.datetime(temp.year, temp.month, temp.day, temp.hour, temp.minute, temp.second, tzinfo=ZoneInfo(TIMEZONE))
 
 
