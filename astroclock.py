@@ -33,53 +33,85 @@ def parseDateString(dateString, TIMEZONE):
     return datetime.datetime(temp.year, temp.month, temp.day, temp.hour, temp.minute, temp.second, tzinfo=ZoneInfo(TIMEZONE))
 
 
+class Config:
+    FILE_NAME = 'astroclock.location'
+    DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
+
+    def __init__(self):
+        self.lon = 13.066667   # Zschopau
+        self.lat = 50.75
+        self.timezone = 'Europe/Berlin'
+        self.simulate = False
+        self.show_planets = True
+        self.simulation_redraw_s = 60
+        self.simulation_time_step_s = 60
+        self.simulation_start_time = None
+
+    @staticmethod
+    def parse_date(date_string, timezone):
+        temp = datetime.datetime.strptime(date_string, Config.DATE_FORMAT)
+        return datetime.datetime(
+            temp.year, temp.month, temp.day,
+            temp.hour, temp.minute, temp.second,
+            tzinfo=ZoneInfo(timezone)
+        )
+
+    @classmethod
+    def load(cls):
+        config = cls()
+
+        if os.path.exists(cls.FILE_NAME):
+            with open(cls.FILE_NAME) as infile:
+                data = infile.read().strip().split('\n')
+                for line in data:
+                    parts = [x.strip() for x in line.split('=')]
+                    if len(parts) != 2:
+                        continue
+
+                    key, value = parts[0].upper(), parts[1]
+
+                    if key == 'LON':
+                        config.lon = float(value)
+                    elif key == 'LAT':
+                        config.lat = float(value)
+                    elif key == 'TIMEZONE':
+                        config.timezone = value
+                    elif key == 'SIMULATE':
+                        config.simulate = (value.lower() == 'true')
+                    elif key == 'SIMULATION_REDRAW_IN_S':
+                        config.simulation_redraw_s = int(value)
+                    elif key == 'SIMULATION_TIME_STEP_IN_S':
+                        config.simulation_time_step_s = int(value)
+                    elif key == 'SHOW_PLANETS':
+                        config.show_planets = (value.lower() == 'true')
+                    elif key == 'SIMULATION_START_TIME':
+                        config.simulation_start_time = cls.parse_date(value, config.timezone)
+        else:
+            config.save()
+
+        return config
+
+    def save(self):
+        with open(self.FILE_NAME, 'w') as outfile:
+            outfile.write(f'LON={self.lon}\n')
+            outfile.write(f'LAT={self.lat}\n')
+            outfile.write(f'TIMEZONE={self.timezone}\n')
+            outfile.write(f'SIMULATE={self.simulate}\n')
+            outfile.write(f'SIMULATION_REDRAW_IN_S={self.simulation_redraw_s}\n')
+            outfile.write(f'SIMULATION_TIME_STEP_IN_S={self.simulation_time_step_s}\n')
+            outfile.write(f'SHOW_PLANETS={self.show_planets}\n')
+
+            start = self.simulation_start_time or datetime.datetime.now(ZoneInfo(self.timezone))
+            outfile.write(f'SIMULATION_START_TIME={start.strftime(self.DATE_FORMAT)}\n')
+
+config = Config.load()
+SIMULATE = config.simulate
+
 SUN = ephem.Sun()
 MOON = ephem.Moon()
 
-LON = 13.066667
-LAT = 50.75
-TIMEZONE = 'Europe/Berlin'
-SIMULATE = False
-SHOW_PLANETS = True
-SIMULATION_REDRAW_IN_S = 60
-SIMULATION_TIME_STEP_IN_S = 60
-SIMULATION_START_TIME = None
-CONFIG_FILE_NAME = 'astroclock.location'
-DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
-if os.path.exists(CONFIG_FILE_NAME):
-    with open(CONFIG_FILE_NAME) as infile:
-        data = infile.read().strip().split('\n')
-        for line in data:
-            zeile = [x.strip() for x in line.split('=')]
-            if zeile[0].upper() == 'LON':
-                LON = float(zeile[1])
-            elif zeile[0].upper() == 'LAT':
-                LAT = float(zeile[1])
-            elif zeile[0].upper() == 'TIMEZONE':
-                TIMEZONE = zeile[1]
-            elif zeile[0].upper() == 'SIMULATE':
-                SIMULATE = (zeile[1].lower() == 'true')
-            elif zeile[0].upper() == 'SIMULATION_REDRAW_IN_S':
-                SIMULATION_REDRAW_IN_S = int(zeile[1])
-            elif zeile[0].upper() == 'SIMULATION_TIME_STEP_IN_S':
-                SIMULATION_TIME_STEP_IN_S = int(zeile[1])
-            elif zeile[0].upper() == 'SHOW_PLANETS':
-                SHOW_PLANETS = (zeile[1].lower() == 'true')
-            elif zeile[0].upper() == 'SIMULATION_START_TIME':
-                SIMULATION_START_TIME = parseDateString(zeile[1], TIMEZONE)
-else:
-    with open(CONFIG_FILE_NAME, 'w') as outfile:
-        outfile.write('LON='+str(LON)+'\n')
-        outfile.write('LAT='+str(LAT)+'\n')
-        outfile.write('TIMEZONE='+str(TIMEZONE)+'\n')
-        outfile.write('SIMULATE='+str(SIMULATE)+'\n')
-        outfile.write('SIMULATION_REDRAW_IN_S='+str(SIMULATION_REDRAW_IN_S)+'\n')
-        outfile.write('SIMULATION_TIME_STEP_IN_S='+str(SIMULATION_TIME_STEP_IN_S)+'\n')
-        outfile.write('SHOW_PLANETS='+str(SHOW_PLANETS)+'\n')
-        outfile.write('SIMULATION_START_TIME=' + datetime.datetime.now(ZoneInfo(TIMEZONE)).strftime(DATE_FORMAT))
-
 LOCATION = ephem.Observer()
-LOCATION.lon, LOCATION.lat  = str(LON), str(LAT)
+LOCATION.lon, LOCATION.lat  = str(config.lon), str(config.lat)
 
 SIZE = 600
 RIM_1 = 20
@@ -161,22 +193,22 @@ class MainWindow(QtWidgets.QMainWindow):
     def drawAll(self, resetTime=True):
         global SIMULATE
         if self.globalTime is None:
-            if not SIMULATE or SIMULATION_START_TIME is None:
+            if not SIMULATE or config.simulation_start_time is None:
                 self.globalTime = ephem.now()
             else:
-                self.globalTime = ephem.Date(SIMULATION_START_TIME)
+                self.globalTime = ephem.Date(config.simulation_start_time)
 
         if resetTime:
             if not SIMULATE:
                 self.globalTime = ephem.now()
             else:
-                self.globalTime = ephem.Date(self.globalTime.datetime() + datetime.timedelta(seconds=SIMULATION_TIME_STEP_IN_S))
+                self.globalTime = ephem.Date(self.globalTime.datetime() + datetime.timedelta(seconds=config.simulation_time_step_s))
         self.clear()
         self.setCentralWidget(self.label)
         self.drawBackground()
         self.drawZodiac()
         self.drawMoonNodes()
-        if SHOW_PLANETS:
+        if config.show_planets:
             self.drawPlanetsAndSun()
         else:
             self.drawSun()
@@ -202,7 +234,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         text = []
         counter = 0
-        for line in getLines(LOCATION, TIMEZONE, self.globalTime):
+        for line in getLines(LOCATION, config.timezone, self.globalTime):
             counter += 1
             zeile = []
             for word in line.split('\t'):
@@ -262,7 +294,7 @@ class MainWindow(QtWidgets.QMainWindow):
         sizeWinterSolstice = int(SIZE * (0.6 - DELTA_DECLINATION_SUN))
         painter.drawEllipse( (SIZE - sizeWinterSolstice)//2 , (SIZE - sizeWinterSolstice)//2, sizeWinterSolstice, sizeWinterSolstice)
         
-        phi = math.pi / 180.0 *LAT
+        phi = math.pi / 180.0 * config.lat
         for (hInDegree, color) in [(0.0, Qt.lightGray), (6.0, Qt.gray), (12.0, Qt.darkGray), (18.0, Qt.darkGray)]:
             painter.setPen(color)
             prev = None
