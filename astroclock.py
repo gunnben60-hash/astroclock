@@ -3,9 +3,7 @@ import ephem
 import math
 import os
 import sys
-import threading
-import time
-from PyQt5 import QtCore, QtGui, QtWidgets, uic 
+from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QEvent, QPoint, Qt
 from sonneundmond import getLines
 
@@ -759,10 +757,27 @@ def redraw():
 
 window.show()    
 
-timer = QtCore.QTimer()
-timer.timeout.connect(redraw)
 
-timer.start(60000 if not config.simulate else config.simulation_redraw_s * 1000)
+def startAlignedTimer():
+    now = datetime.datetime.now()
+    delay_ms = int((60 - now.second - now.microsecond / 1_000_000) * 1000)
 
+    # einmaliger Start zur Synchronisation
+    QtCore.QTimer.singleShot(delay_ms, startRegularTimer)
+
+
+def startRegularTimer():
+    redraw()  
+
+    interval = 60000 if not config.simulate else config.simulation_redraw_s * 1000
+
+    timer = QtCore.QTimer()
+    timer.timeout.connect(redraw)
+    timer.start(interval)
+
+    global redrawTimer
+    redrawTimer = timer
+
+startAlignedTimer()
 saveImage()
 app.exec_()
