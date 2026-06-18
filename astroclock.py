@@ -28,10 +28,6 @@ def findRootByBisection(arg1, arg2, delta, f):
         return findRootByBisection(arg1, argM, delta, f)
 
    
-def parseDateString(dateString, TIMEZONE):
-    temp = datetime.datetime.strptime(dateString, DATE_FORMAT)
-    return datetime.datetime(temp.year, temp.month, temp.day, temp.hour, temp.minute, temp.second, tzinfo=ZoneInfo(TIMEZONE))
-
 
 class Config:
     FILE_NAME = 'astroclock.location'
@@ -48,14 +44,14 @@ class Config:
         self.simulation_start_time = None
 
     @staticmethod
-    def parse_date(date_string, timezone):
+    def parseDateString(date_string, timezone):
         temp = datetime.datetime.strptime(date_string, Config.DATE_FORMAT)
         return datetime.datetime(
             temp.year, temp.month, temp.day,
             temp.hour, temp.minute, temp.second,
             tzinfo=ZoneInfo(timezone)
         )
-
+    
     @classmethod
     def load(cls):
         config = cls()
@@ -85,11 +81,11 @@ class Config:
                     elif key == 'SHOW_PLANETS':
                         config.show_planets = (value.lower() == 'true')
                     elif key == 'SIMULATION_START_TIME':
-                        config.simulation_start_time = cls.parse_date(value, config.timezone)
+                        config.simulation_start_time = cls.parseDateString(value, config.timezone)
         else:
             config.save()
-
         return config
+    
 
     def save(self):
         with open(self.FILE_NAME, 'w') as outfile:
@@ -105,34 +101,34 @@ class Config:
             outfile.write(f'SIMULATION_START_TIME={start.strftime(self.DATE_FORMAT)}\n')
 
 config = Config.load()
-SIMULATE = config.simulate
-
-SUN = ephem.Sun()
-MOON = ephem.Moon()
-
-LOCATION = ephem.Observer()
-LOCATION.lon, LOCATION.lat  = str(config.lon), str(config.lat)
-
-SIZE = 600
-RIM_1 = 20
-RIM_PLANET = 10
-TEXT_HEIGHT = 270
-SYMBOL_CLOCK = ['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI']
-SYMBOL_ZODIAC = ['♈︎', '♉︎', '♊︎', '♋︎', '♌︎', '♍︎', '♎︎', '♏︎', '♐︎', '♑︎', '♒︎', '♓︎']
-SYMBOL_LUNAR_NODES = ['☊', '☋']
-PLANETS = [(ephem.Mercury(), '☿'), (ephem.Venus(), '♀'), (ephem.Mars(), '♂'), (ephem.Jupiter(), '♃'), (ephem.Saturn(), '♄')]
-DELTA_DECLINATION_SUN = 0.2
 
     
 
 class MainWindow(QtWidgets.QMainWindow):
-    def __init__(self):
+
+    SUN = ephem.Sun()
+    MOON = ephem.Moon()
+
+    SIZE = 600
+    RIM_1 = 20
+    RIM_PLANET = 10
+    TEXT_HEIGHT = 270
+    SYMBOL_CLOCK = ['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI']
+    SYMBOL_ZODIAC = ['♈︎', '♉︎', '♊︎', '♋︎', '♌︎', '♍︎', '♎︎', '♏︎', '♐︎', '♑︎', '♒︎', '♓︎']
+    SYMBOL_LUNAR_NODES = ['☊', '☋']
+    PLANETS = [(ephem.Mercury(), '☿'), (ephem.Venus(), '♀'), (ephem.Mars(), '♂'), (ephem.Jupiter(), '♃'), (ephem.Saturn(), '♄')]
+    DELTA_DECLINATION_SUN = 0.2
+
+    def __init__(self, config):
         super().__init__()
         
         self.setWindowTitle('Astrologion')
-
+        
+        self.config = config
+        self.location = ephem.Observer()
+        self.location.lon, self.location.lat  = str(self.config.lon), str(self.config.lat)
         self.label = QtWidgets.QLabel()
-        canvas = QtGui.QPixmap(SIZE, SIZE + TEXT_HEIGHT)
+        canvas = QtGui.QPixmap(self.SIZE,self. SIZE + self.TEXT_HEIGHT)
         canvas.fill(Qt.white)
         self.label.setPixmap(canvas)
         self.globalTime = None
@@ -141,20 +137,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.drawAll()
 
     def eventFilter(self, obj, event):
-        global SIMULATE
         if event.type() == QEvent.MouseButtonPress:
             if event.button() == Qt.LeftButton:
-                if event.y() <= RIM_1 and event.x() <= RIM_1:
+                if event.y() <= self.RIM_1 and event.x() <= self.RIM_1:
                     self.startMovement = None
-                    SIMULATE = True
+                    self.config.simulate = True
                     now = self.globalTime.datetime()
                     result = now + datetime.timedelta(days=-1)
                     self.globalTime = ephem.Date(result)
                     self.drawAll(False)
                     self.update()
-                elif event.y() <= RIM_1 and event.x() >= SIZE-RIM_1:
+                elif event.y() <= self.RIM_1 and event.x() >= self.SIZE-self.RIM_1:
                     self.startMovement = None
-                    SIMULATE = True
+                    self.config.simulate = True
                     now = self.globalTime.datetime()
                     result = now + datetime.timedelta(days=1)
                     self.globalTime = ephem.Date(result)
@@ -163,17 +158,17 @@ class MainWindow(QtWidgets.QMainWindow):
                 else:
                     self.startMovement = (event.x(), event.y())
             elif event.button() == Qt.RightButton:
-                SIMULATE = False
+                self.config.simulate = False
                 self.drawAll()
                 self.update()
         elif event.type() == QEvent.MouseButtonRelease:
             if event.button() == Qt.LeftButton and self.startMovement is not None:
-                SIMULATE = True
-                x1 = self.startMovement[0] - SIZE/2
-                y1 = self.startMovement[1] - SIZE/2
+                self.config.simulate = True
+                x1 = self.startMovement[0] - self.SIZE/2
+                y1 = self.startMovement[1] - self.SIZE/2
                 theta1 = math.atan2(y1, x1)
-                x2 = event.x() - SIZE/2
-                y2 = event.y() - SIZE/2
+                x2 = event.x() - self.SIZE/2
+                y2 = event.y() - self.SIZE/2
                 theta2 = math.atan2(y2, x2)
                 
                 timeShiftInDays = (theta2-theta1)/2.0/math.pi
@@ -191,24 +186,23 @@ class MainWindow(QtWidgets.QMainWindow):
         return super().eventFilter(obj, event)
         
     def drawAll(self, resetTime=True):
-        global SIMULATE
         if self.globalTime is None:
-            if not SIMULATE or config.simulation_start_time is None:
+            if not self.config.simulate or self.config.simulation_start_time is None:
                 self.globalTime = ephem.now()
             else:
-                self.globalTime = ephem.Date(config.simulation_start_time)
+                self.globalTime = ephem.Date(self.config.simulation_start_time)
 
         if resetTime:
-            if not SIMULATE:
+            if not self.config.simulate:
                 self.globalTime = ephem.now()
             else:
-                self.globalTime = ephem.Date(self.globalTime.datetime() + datetime.timedelta(seconds=config.simulation_time_step_s))
+                self.globalTime = ephem.Date(self.globalTime.datetime() + datetime.timedelta(seconds=self.config.simulation_time_step_s))
         self.clear()
         self.setCentralWidget(self.label)
         self.drawBackground()
         self.drawZodiac()
         self.drawMoonNodes()
-        if config.show_planets:
+        if self.config.show_planets:
             self.drawPlanetsAndSun()
         else:
             self.drawSun()
@@ -217,10 +211,10 @@ class MainWindow(QtWidgets.QMainWindow):
         
     def clear(self):
         painter = QtGui.QPainter(self.label.pixmap())
-        painter.fillRect(0, 0, SIZE, SIZE + TEXT_HEIGHT, Qt.white)
+        painter.fillRect(0, 0, self.SIZE, self.SIZE + self.TEXT_HEIGHT, Qt.white)
 
     def fillText(self):
-        LOCATION.date = self.globalTime
+        self.location.date = self.globalTime
        
         painter = QtGui.QPainter(self.label.pixmap())
         pen = QtGui.QPen()
@@ -234,7 +228,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         text = []
         counter = 0
-        for line in getLines(LOCATION, config.timezone, self.globalTime):
+        for line in getLines(self.location, self.config.timezone, self.globalTime):
             counter += 1
             zeile = []
             for word in line.split('\t'):
@@ -245,10 +239,10 @@ class MainWindow(QtWidgets.QMainWindow):
         for i in range(len(text)-1):
             if len(text[i]) < 1:
                 continue
-            painter.drawText(RIM_1, SIZE + RIM_1 + i*15, text[i][0])
+            painter.drawText(self.RIM_1, self.SIZE + self.RIM_1 + i*15, text[i][0])
             if len(text[i]) < 2:
                 continue
-            painter.drawText(200, SIZE + RIM_1 + i*15, text[i][1])
+            painter.drawText(200, self.SIZE + self.RIM_1 + i*15, text[i][1])
 
         painter.end()
 
@@ -259,40 +253,40 @@ class MainWindow(QtWidgets.QMainWindow):
         pen.setWidth(1)
         painter.setPen(pen)
         
-        painter.drawEllipse(RIM_1, RIM_1, SIZE-2*RIM_1, SIZE-2*RIM_1)
+        painter.drawEllipse(self.RIM_1, self.RIM_1, self.SIZE-2*self.RIM_1, self.SIZE-2*self.RIM_1)
         
         font=QtGui.QFont()
         font.setPixelSize(20)
         painter.setFont(font)
         
-        painter.drawText(RIM_1//4, RIM_1, '<')
-        painter.drawText(SIZE-RIM_1, RIM_1, '>')
+        painter.drawText(self.RIM_1//4, self.RIM_1, '<')
+        painter.drawText(self.SIZE-self.RIM_1, self.RIM_1, '>')
         
         for i in range(24):
             angle = 2.0 * math.pi / 24.0 * i
-            deltaX1 = int(math.sin(angle) * SIZE / 2.0 +0.5)
-            deltaY1 = int(math.cos(angle) * SIZE / 2.0 +0.5) 
-            deltaX2 = int(math.sin(angle) * (SIZE / 2.0 - RIM_1) +0.5)
-            deltaY2 = int(math.cos(angle) * (SIZE / 2.0 - RIM_1) +0.5) 
-            painter.drawLine(SIZE // 2 - deltaX2, SIZE // 2 + deltaY2, SIZE // 2 - deltaX1, SIZE // 2 + deltaY1)
+            deltaX1 = int(math.sin(angle) * self.SIZE / 2.0 +0.5)
+            deltaY1 = int(math.cos(angle) * self.SIZE / 2.0 +0.5) 
+            deltaX2 = int(math.sin(angle) * (self.SIZE / 2.0 - self.RIM_1) +0.5)
+            deltaY2 = int(math.cos(angle) * (self.SIZE / 2.0 - self.RIM_1) +0.5) 
+            painter.drawLine(self.SIZE // 2 - deltaX2, self.SIZE // 2 + deltaY2, self.SIZE // 2 - deltaX1, self.SIZE // 2 + deltaY1)
             
-            deltaX3 = int(math.sin(angle) * (SIZE / 2.0 - 2*RIM_1) +0.5)
-            deltaY3 = int(math.cos(angle) * (SIZE / 2.0 - 2*RIM_1) +0.5)
+            deltaX3 = int(math.sin(angle) * (self.SIZE / 2.0 - 2*self.RIM_1) +0.5)
+            deltaY3 = int(math.cos(angle) * (self.SIZE / 2.0 - 2*self.RIM_1) +0.5)
             
             painter.save()
-            painter.translate(SIZE // 2 - deltaX3, SIZE // 2 + deltaY3)
+            painter.translate(self.SIZE // 2 - deltaX3, self.SIZE // 2 + deltaY3)
             painter.rotate(180+i*15)
-            painter.drawText(-RIM_1//2, RIM_1//2, SYMBOL_CLOCK[i])
+            painter.drawText(-self.RIM_1//2, self.RIM_1//2, self.SYMBOL_CLOCK[i])
             painter.restore()
             
         painter.setPen(Qt.yellow)
         
-        sizeEquinox = int(SIZE * 0.6)
-        painter.drawEllipse( (SIZE - sizeEquinox)//2 , (SIZE - sizeEquinox)//2, sizeEquinox, sizeEquinox)
-        sizeSummerSolstice = int(SIZE * (0.6 + DELTA_DECLINATION_SUN))
-        painter.drawEllipse( (SIZE - sizeSummerSolstice)//2 , (SIZE - sizeSummerSolstice)//2, sizeSummerSolstice, sizeSummerSolstice)
-        sizeWinterSolstice = int(SIZE * (0.6 - DELTA_DECLINATION_SUN))
-        painter.drawEllipse( (SIZE - sizeWinterSolstice)//2 , (SIZE - sizeWinterSolstice)//2, sizeWinterSolstice, sizeWinterSolstice)
+        sizeEquinox = int(self.SIZE * 0.6)
+        painter.drawEllipse( (self.SIZE - sizeEquinox)//2 , (self.SIZE - sizeEquinox)//2, sizeEquinox, sizeEquinox)
+        sizeSummerSolstice = int(self.SIZE * (0.6 + self.DELTA_DECLINATION_SUN))
+        painter.drawEllipse( (self.SIZE - sizeSummerSolstice)//2 , (self.SIZE - sizeSummerSolstice)//2, sizeSummerSolstice, sizeSummerSolstice)
+        sizeWinterSolstice = int(self.SIZE * (0.6 - self.DELTA_DECLINATION_SUN))
+        painter.drawEllipse( (self.SIZE - sizeWinterSolstice)//2 , (self.SIZE - sizeWinterSolstice)//2, sizeWinterSolstice, sizeWinterSolstice)
         
         phi = math.pi / 180.0 * config.lat
         for (hInDegree, color) in [(0.0, Qt.lightGray), (6.0, Qt.gray), (12.0, Qt.darkGray), (18.0, Qt.darkGray)]:
@@ -305,14 +299,14 @@ class MainWindow(QtWidgets.QMainWindow):
                 declination = math.asin(math.sin(phi)*math.sin(h) - math.cos(phi)*math.cos(azimut)*math.cos(h))
                 tau = math.atan2((math.sin(phi)*math.cos(azimut) + math.cos(phi)*math.tan(h)), math.sin(azimut)) + math.pi/2.0
                 
-                radius = SIZE * (0.6 + declination / math.pi * 180.0 / 23.44 * DELTA_DECLINATION_SUN) / 2.0
-                if radius < SIZE/6.0 or radius > SIZE//2 - RIM_1:
+                radius = self.SIZE * (0.6 + declination / math.pi * 180.0 / 23.44 * self.DELTA_DECLINATION_SUN) / 2.0
+                if radius < self.SIZE/6.0 or radius > self.SIZE//2 - self.RIM_1:
                     continue
                 deltaX = int(math.sin(tau) * radius +0.5)
                 deltaY = int(math.cos(tau) * radius +0.5)
                 
                 if prev:
-                    painter.drawPoint(SIZE // 2 - deltaX, SIZE // 2 + deltaY)
+                    painter.drawPoint(self.SIZE // 2 - deltaX, self.SIZE // 2 + deltaY)
                 prev = deltaX, deltaY 
                 
         painter.setPen(Qt.yellow)
@@ -339,37 +333,37 @@ class MainWindow(QtWidgets.QMainWindow):
             delta = (math.pi - tau) / 6.0
             for j in range(-5, 6):
                 angle = math.pi + delta*j
-                radius = SIZE * (0.6 + declination / math.pi * 180.0 / 23.44 * DELTA_DECLINATION_SUN) / 2.0
+                radius = self.SIZE * (0.6 + declination / math.pi * 180.0 / 23.44 * self.DELTA_DECLINATION_SUN) / 2.0
                 deltaX = int(math.sin(angle) * radius +0.5)
                 deltaY = int(math.cos(angle) * radius +0.5)
             
-                painter.drawPoint(SIZE // 2 - deltaX, SIZE // 2 + deltaY)
+                painter.drawPoint(self.SIZE // 2 - deltaX, self.SIZE // 2 + deltaY)
             prev = deltaX, deltaY 
                 
         painter.end()
         
         
     def drawZodiac(self):
-        LOCATION.date = self.globalTime
+        self.location.date = self.globalTime
         
         painter = QtGui.QPainter(self.label.pixmap())
         painter.setPen(Qt.blue)
-        localSize = SIZE//3
-        painter.drawEllipse( (SIZE - localSize)//2, (SIZE - localSize)//2, localSize, localSize)
-        painter.drawEllipse( (SIZE - localSize)//2 + RIM_1, (SIZE - localSize)//2 + RIM_1, localSize - 2*RIM_1, localSize - 2*RIM_1)
+        localSize = self.SIZE//3
+        painter.drawEllipse( (self.SIZE - localSize)//2, (self.SIZE - localSize)//2, localSize, localSize)
+        painter.drawEllipse( (self.SIZE - localSize)//2 + self.RIM_1, (self.SIZE - localSize)//2 + self.RIM_1, localSize - 2*self.RIM_1, localSize - 2*self.RIM_1)
         
-        angle0 = float(LOCATION.sidereal_time())
+        angle0 = float(self.location.sidereal_time())
         for i in range(12):
             angle = angle0 - i * 2.0 * math.pi / 12.0
             deltaX1 = int(math.sin(angle) * localSize/2.0 +0.5)
             deltaY1 = int(math.cos(angle) * localSize/2.0 +0.5)
-            deltaX2 = int(math.sin(angle) * (localSize/2.0-RIM_1) +0.5)
-            deltaY2 = int(math.cos(angle) * (localSize/2.0-RIM_1)  +0.5)
+            deltaX2 = int(math.sin(angle) * (localSize/2.0-self.RIM_1) +0.5)
+            deltaY2 = int(math.cos(angle) * (localSize/2.0-self.RIM_1)  +0.5)
             if i in [6]:
                 painter.setPen(Qt.red)
             else:
                 painter.setPen(Qt.blue)
-            painter.drawLine(SIZE // 2 - deltaX2, SIZE // 2 + deltaY2, SIZE // 2 - deltaX1, SIZE // 2 + deltaY1)
+            painter.drawLine(self.SIZE // 2 - deltaX2, self.SIZE // 2 + deltaY2, self.SIZE // 2 - deltaX1, self.SIZE // 2 + deltaY1)
             
         font=QtGui.QFont()
         font.setPixelSize(18)
@@ -377,79 +371,79 @@ class MainWindow(QtWidgets.QMainWindow):
             
         for i in range(12):
             angle = angle0 - i * 2.0 * math.pi / 12.0 - 2.0 * math.pi / 24.0
-            deltaX3 = int(math.sin(angle) * (localSize/2.0-RIM_1/2.0+3.5)+0.5)
-            deltaY3 = int(math.cos(angle) * (localSize/2.0-RIM_1/2.0+3.5) +0.5)
+            deltaX3 = int(math.sin(angle) * (localSize/2.0-self.RIM_1/2.0+3.5)+0.5)
+            deltaY3 = int(math.cos(angle) * (localSize/2.0-self.RIM_1/2.0+3.5) +0.5)
             
             painter.save()
-            painter.translate(SIZE // 2 + deltaX3, SIZE // 2 - deltaY3)
+            painter.translate(self.SIZE // 2 + deltaX3, self.SIZE // 2 - deltaY3)
             painter.rotate(angle * 180.0 / math.pi)
-            painter.drawText(-RIM_1//2, RIM_1//2, SYMBOL_ZODIAC[i])
+            painter.drawText(-self.RIM_1//2, self.RIM_1//2, self.SYMBOL_ZODIAC[i])
             painter.restore()
             
         self.sunDeclVsRa = []
         previous = None
         for i in range(365):
-            LOCATION.date = ephem.Date(self.globalTime.datetime() + datetime.timedelta(days=i))
-            SUN.compute(LOCATION)
-            LOCATION.date = self.globalTime
-            angle = float(LOCATION.sidereal_time()) - float(SUN.a_ra) + math.pi
+            self.location.date = ephem.Date(self.globalTime.datetime() + datetime.timedelta(days=i))
+            self.SUN.compute(self.location)
+            self.location.date = self.globalTime
+            angle = float(self.location.sidereal_time()) - float(self.SUN.a_ra) + math.pi
             
-            decInDegree = SUN.a_dec / math.pi * 180.0
+            decInDegree = self.SUN.a_dec / math.pi * 180.0
             
-            self.sunDeclVsRa.append([SUN.a_dec, SUN.a_ra])
+            self.sunDeclVsRa.append([self.SUN.a_dec, self.SUN.a_ra])
         
-            radius = SIZE * (0.6 + decInDegree / 23.44 * DELTA_DECLINATION_SUN) / 2.0
+            radius = self.SIZE * (0.6 + decInDegree / 23.44 * self.DELTA_DECLINATION_SUN) / 2.0
             deltaX1 = int(math.sin(angle) * radius +0.5)
             deltaY1 = int(math.cos(angle) * radius +0.5)
             if not previous is None:
-                painter.drawLine(previous[0], previous[1], SIZE // 2 - deltaX1, SIZE // 2 + deltaY1)
-            previous = SIZE // 2 - deltaX1, SIZE // 2 + deltaY1
+                painter.drawLine(previous[0], previous[1], self.SIZE // 2 - deltaX1, self.SIZE // 2 + deltaY1)
+            previous = self.SIZE // 2 - deltaX1, self.SIZE // 2 + deltaY1
         self.sunDeclVsRa.sort(key = lambda x: x[1])
         
         painter.setPen(Qt.black)
         for i in range(28 * 12):
-            LOCATION.date = ephem.Date(self.globalTime.datetime() + datetime.timedelta(hours=i*2))
-            MOON.compute(LOCATION)
-            LOCATION.date = self.globalTime
-            angle = float(LOCATION.sidereal_time()) - float(MOON.a_ra) + math.pi
+            self.location.date = ephem.Date(self.globalTime.datetime() + datetime.timedelta(hours=i*2))
+            self.MOON.compute(self.location)
+            self.location.date = self.globalTime
+            angle = float(self.location.sidereal_time()) - float(self.MOON.a_ra) + math.pi
             
-            decInDegree = MOON.a_dec / math.pi * 180.0
+            decInDegree = self.MOON.a_dec / math.pi * 180.0
         
-            radius = SIZE * (0.6 + decInDegree / 23.44 * DELTA_DECLINATION_SUN) / 2.0
+            radius = self.SIZE * (0.6 + decInDegree / 23.44 * self.DELTA_DECLINATION_SUN) / 2.0
             deltaX1 = int(math.sin(angle) * radius +0.5)
             deltaY1 = int(math.cos(angle) * radius +0.5)
-            painter.drawPoint(SIZE // 2 - deltaX1, SIZE // 2 + deltaY1)
+            painter.drawPoint(self.SIZE // 2 - deltaX1, self.SIZE // 2 + deltaY1)
 
         painter.end()
         
 
     def drawSun(self):
-        LOCATION.date = self.globalTime
-        SUN.compute(LOCATION)
-        angle = float(LOCATION.sidereal_time()) - float(SUN.a_ra) + math.pi
+        self.location.date = self.globalTime
+        self.SUN.compute(self.location)
+        angle = float(self.location.sidereal_time()) - float(self.SUN.a_ra) + math.pi
         
         painter = QtGui.QPainter(self.label.pixmap())
         
-        decInDegree = SUN.a_dec / math.pi * 180.0
+        decInDegree = self.SUN.a_dec / math.pi * 180.0
         
         brush = QtGui.QBrush()
         brush.setStyle(Qt.SolidPattern)
         brush.setColor(Qt.yellow)
         painter.setBrush(brush)
         
-        deltaX = int(math.sin(angle) * (SIZE / 2.0-RIM_1) +0.5)
-        deltaY = int(math.cos(angle) * (SIZE / 2.0 - RIM_1) +0.5)
-        painter.drawLine(SIZE // 2, SIZE // 2, SIZE // 2 - deltaX, SIZE // 2 + deltaY)
+        deltaX = int(math.sin(angle) * (self.SIZE / 2.0-self.RIM_1) +0.5)
+        deltaY = int(math.cos(angle) * (self.SIZE / 2.0 - self.RIM_1) +0.5)
+        painter.drawLine(self.SIZE // 2, self.SIZE // 2, self.SIZE // 2 - deltaX, self.SIZE // 2 + deltaY)
         
-        radius = SIZE * (0.6 + decInDegree / 23.44 * DELTA_DECLINATION_SUN) / 2.0
+        radius = self.SIZE * (0.6 + decInDegree / 23.44 * self.DELTA_DECLINATION_SUN) / 2.0
         deltaX1 = int(math.sin(angle) * radius +0.5)
         deltaY1 = int(math.cos(angle) * radius +0.5)
 
-        center = QPoint(SIZE // 2 - deltaX1, SIZE // 2 + deltaY1)
-        radius1 = RIM_1//2
+        center = QPoint(self.SIZE // 2 - deltaX1, self.SIZE // 2 + deltaY1)
+        radius1 = self.RIM_1//2
 
         # Fokuspunkt für schräge Beleuchtung von oben links
-        focal_point = QPoint(SIZE // 2 - deltaX1 - RIM_1//5, SIZE // 2 + deltaY1 - RIM_1//5)  # Verschoben nach oben links
+        focal_point = QPoint(self.SIZE // 2 - deltaX1 - self.RIM_1//5, self.SIZE // 2 + deltaY1 - self.RIM_1//5)  # Verschoben nach oben links
 
         # Radialer Gradient für goldene Farbe und Glanz
         gradient = QtGui.QRadialGradient(focal_point, radius1, focal_point)
@@ -466,9 +460,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
     def drawMoon(self):
-        LOCATION.date = self.globalTime
-        MOON.compute(LOCATION)
-        angle = float(LOCATION.sidereal_time()) - float(MOON.a_ra) + math.pi
+        self.location.date = self.globalTime
+        self.MOON.compute(self.location)
+        angle = float(self.location.sidereal_time()) - float(self.MOON.a_ra) + math.pi
         
         painter = QtGui.QPainter(self.label.pixmap())
         brush = QtGui.QBrush()
@@ -476,21 +470,21 @@ class MainWindow(QtWidgets.QMainWindow):
         brush.setColor(QtGui.QColor('darkgray'))
         painter.setBrush(brush)
         
-        deltaX = int(math.sin(angle) * (SIZE / 2.0-RIM_1) +0.5)
-        deltaY = int(math.cos(angle) * (SIZE / 2.0 - RIM_1) +0.5)
-        painter.drawLine(SIZE // 2, SIZE // 2, SIZE // 2 - deltaX, SIZE // 2 + deltaY)
+        deltaX = int(math.sin(angle) * (self.SIZE / 2.0-self.RIM_1) +0.5)
+        deltaY = int(math.cos(angle) * (self.SIZE / 2.0 - self.RIM_1) +0.5)
+        painter.drawLine(self.SIZE // 2, self.SIZE // 2, self.SIZE // 2 - deltaX, self.SIZE // 2 + deltaY)
         
-        decInDegree = MOON.a_dec / math.pi * 180.0
+        decInDegree = self.MOON.a_dec / math.pi * 180.0
         
-        radius = SIZE * (0.6 + decInDegree / 23.44 * DELTA_DECLINATION_SUN) / 2.0
+        radius = self.SIZE * (0.6 + decInDegree / 23.44 * self.DELTA_DECLINATION_SUN) / 2.0
         deltaX1 = int(math.sin(angle) * radius +0.5)
         deltaY1 = int(math.cos(angle) * radius +0.5)
 
-        center = QPoint(SIZE // 2 - deltaX1, SIZE // 2 + deltaY1)
-        radius1 = RIM_1 // 2
+        center = QPoint(self.SIZE // 2 - deltaX1, self.SIZE // 2 + deltaY1)
+        radius1 = self.RIM_1 // 2
 
         # Fokuspunkt für schräge Beleuchtung von oben links
-        focal_point = QPoint(SIZE // 2 - deltaX1 - RIM_1//5, SIZE // 2 + deltaY1 - RIM_1//5)  # Verschoben nach oben links
+        focal_point = QPoint(self.SIZE // 2 - deltaX1 - self.RIM_1//5, self.SIZE // 2 + deltaY1 - self.RIM_1//5)  # Verschoben nach oben links
 
         # Radialer Gradient für goldene Farbe und Glanz
         gradient = QtGui.QRadialGradient(focal_point, radius1, focal_point)
@@ -505,9 +499,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         alphaResolution = 100.0
         betaResolution = 100.0
-        x0 = SIZE // 2 - deltaX1
-        y0 = SIZE // 2 + deltaY1
-        r0 = RIM_1//2
+        x0 = self.SIZE // 2 - deltaX1
+        y0 = self.SIZE // 2 + deltaY1
+        r0 = self.RIM_1//2
 
         pixmap = self.label.pixmap()
         img = pixmap.toImage()
@@ -539,12 +533,12 @@ class MainWindow(QtWidgets.QMainWindow):
             beta = math.pi / betaResolution * indexBeta
             if ephem.next_full_moon(self.globalTime) < ephem.next_new_moon(self.globalTime):
                 #zunehmend
-                for indexAlpha in range(int(MOON.phase/100.0 * alphaResolution+0.5) + 1, int(alphaResolution)):
+                for indexAlpha in range(int(self.MOON.phase/100.0 * alphaResolution+0.5) + 1, int(alphaResolution)):
                     alpha = math.pi / alphaResolution * indexAlpha + 0.5 * math.pi
                     paint(alpha, beta, r0)
             else:
                 #abnehmend
-                for indexAlpha in range(int(alphaResolution - MOON.phase/100.0 * alphaResolution+0.5)-1):
+                for indexAlpha in range(int(alphaResolution - self.MOON.phase/100.0 * alphaResolution+0.5)-1):
                     alpha = math.pi / alphaResolution * indexAlpha + 0.5 * math.pi
                     paint(alpha, beta, r0)
 
@@ -552,14 +546,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
     def calcMoonEclLat(self, t):
-        LOCATION.date = t
-        MOON.compute(LOCATION)
-        return ephem.Ecliptic(MOON).lat
+        self.location.date = t
+        self.MOON.compute(self.location)
+        return ephem.Ecliptic(self.MOON).lat
     
     def calcSunRa(self, t):
-        LOCATION.date = t
-        SUN.compute(LOCATION)
-        return SUN.a_ra
+        self.location.date = t
+        self.SUN.compute(self.location)
+        return self.SUN.a_ra
 
     def drawMoonNodes(self):
         now = self.globalTime.datetime()
@@ -585,11 +579,11 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.calcMoonEclLat(tNode - 1.0) > 0:
             nodeType = 1
 
-        LOCATION.date = tNode
-        MOON.compute(LOCATION)
+        self.location.date = tNode
+        self.MOON.compute(self.location)
         
         
-        raMoon = MOON.a_ra
+        raMoon = self.MOON.a_ra
         if raMoon < 0.0:
             raMoon += 2.0 * math.pi
         if raMoon > 2.0 * math.pi:
@@ -603,9 +597,9 @@ class MainWindow(QtWidgets.QMainWindow):
                     break
             
         decInDegree = decSun / math.pi * 180.0
-        radius = SIZE * (0.6 + decInDegree / 23.44 * DELTA_DECLINATION_SUN) / 2.0
+        radius = self.SIZE * (0.6 + decInDegree / 23.44 * self.DELTA_DECLINATION_SUN) / 2.0
         
-        raMoon = MOON.a_ra + math.pi
+        raMoon = self.MOON.a_ra + math.pi
         if raMoon < 0.0:
             raMoon += 2.0 * math.pi
         if raMoon > 2.0 * math.pi:
@@ -619,63 +613,63 @@ class MainWindow(QtWidgets.QMainWindow):
                     break
             
         decInDegree = decSun / math.pi * 180.0
-        radius_ = SIZE * (0.6 + decInDegree / 23.44 * DELTA_DECLINATION_SUN) / 2.0
+        radius_ = self.SIZE * (0.6 + decInDegree / 23.44 * self.DELTA_DECLINATION_SUN) / 2.0
         
-        LOCATION.date = self.globalTime
+        self.location.date = self.globalTime
 
         if nodeType == 0:
             radius0 = radius_
             radius1 = radius
-            angle0 = float(LOCATION.sidereal_time()) - float(MOON.a_ra) 
-            angle1 = float(LOCATION.sidereal_time()) - float(MOON.a_ra) + math.pi
+            angle0 = float(self.location.sidereal_time()) - float(self.MOON.a_ra) 
+            angle1 = float(self.location.sidereal_time()) - float(self.MOON.a_ra) + math.pi
         else:
             radius0 = radius
             radius1 = radius_
-            angle0 = float(LOCATION.sidereal_time()) - float(MOON.a_ra) + math.pi
-            angle1 = float(LOCATION.sidereal_time()) - float(MOON.a_ra) 
+            angle0 = float(self.location.sidereal_time()) - float(self.MOON.a_ra) + math.pi
+            angle1 = float(self.location.sidereal_time()) - float(self.MOON.a_ra) 
 
-        LOCATION.date = tNode + 30
+        self.location.date = tNode + 30
 
         painter = QtGui.QPainter(self.label.pixmap())
         
         deltaX = int(math.sin(angle0) * radius0 +0.5)
         deltaY = int(math.cos(angle0) * radius0 +0.5)
-        painter.drawLine(SIZE // 2, SIZE // 2, SIZE // 2 - deltaX, SIZE // 2 + deltaY)
+        painter.drawLine(self.SIZE // 2, self.SIZE // 2, self.SIZE // 2 - deltaX, self.SIZE // 2 + deltaY)
 
-        deltaX1 = int(math.sin(angle0) * (radius0+ RIM_1//2) +0.5)
-        deltaY1 = int(math.cos(angle0) * (radius0 + RIM_1//2) +0.5)
+        deltaX1 = int(math.sin(angle0) * (radius0+ self.RIM_1//2) +0.5)
+        deltaY1 = int(math.cos(angle0) * (radius0 + self.RIM_1//2) +0.5)
         painter.save()
         font=QtGui.QFont()
         font.setPixelSize(20)
         painter.setFont(font)
-        painter.translate(SIZE // 2 - deltaX1, SIZE // 2 + deltaY1)
+        painter.translate(self.SIZE // 2 - deltaX1, self.SIZE // 2 + deltaY1)
         painter.rotate(angle0 * 180.0 / math.pi)
-        painter.drawText(-RIM_1//2, RIM_1//2, SYMBOL_LUNAR_NODES[0])
+        painter.drawText(-self.RIM_1//2, self.RIM_1//2, self.SYMBOL_LUNAR_NODES[0])
         painter.restore()
 
         deltaX = int(math.sin(angle1) * radius1 +0.5)
         deltaY = int(math.cos(angle1) * radius1 +0.5)
-        painter.drawLine(SIZE // 2, SIZE // 2, SIZE // 2 - deltaX, SIZE // 2 + deltaY)
+        painter.drawLine(self.SIZE // 2, self.SIZE // 2, self.SIZE // 2 - deltaX, self.SIZE // 2 + deltaY)
 
-        deltaX1 = int(math.sin(angle1) * (radius1+ RIM_1//2) +0.5)
-        deltaY1 = int(math.cos(angle1) * (radius1 + RIM_1//2) +0.5)
+        deltaX1 = int(math.sin(angle1) * (radius1+ self.RIM_1//2) +0.5)
+        deltaY1 = int(math.cos(angle1) * (radius1 + self.RIM_1//2) +0.5)
         painter.save()
         font=QtGui.QFont()
         font.setPixelSize(20)
         painter.setFont(font)
-        painter.translate(SIZE // 2 - deltaX1, SIZE // 2 + deltaY1)
+        painter.translate(self.SIZE // 2 - deltaX1, self.SIZE // 2 + deltaY1)
         painter.rotate(angle1 * 180.0 / math.pi)
-        painter.drawText(-RIM_1//2, RIM_1//2, SYMBOL_LUNAR_NODES[1])
+        painter.drawText(-self.RIM_1//2, self.RIM_1//2, self.SYMBOL_LUNAR_NODES[1])
         painter.restore()
 
         painter.end()    
         
     def drawPlanetsAndSun(self):
-        LOCATION.date = self.globalTime
+        self.location.date = self.globalTime
 
         def drawPlanet(planet, symbol):
             painter = QtGui.QPainter(self.label.pixmap())
-            planet.compute(LOCATION)
+            planet.compute(self.location)
         
             raPlanet = planet.a_ra
             if raPlanet < 0.0:
@@ -683,26 +677,26 @@ class MainWindow(QtWidgets.QMainWindow):
             if raPlanet > 2.0 * math.pi:
                 raPlanet -= 2.0 * math.pi
                 
-            angle = float(LOCATION.sidereal_time()) - float(raPlanet) + math.pi
+            angle = float(self.location.sidereal_time()) - float(raPlanet) + math.pi
         
-            deltaX = int(math.sin(angle) * (SIZE / 2.0-RIM_PLANET) +0.5)
-            deltaY = int(math.cos(angle) * (SIZE / 2.0 - RIM_PLANET) +0.5)
+            deltaX = int(math.sin(angle) * (self.SIZE / 2.0-self.RIM_PLANET) +0.5)
+            deltaY = int(math.cos(angle) * (self.SIZE / 2.0 - self.RIM_PLANET) +0.5)
             painter.setPen(Qt.PenStyle(Qt.DotLine))
-            painter.drawLine(SIZE // 2, SIZE // 2, SIZE // 2 - deltaX, SIZE // 2 + deltaY)
+            painter.drawLine(self.SIZE // 2, self.SIZE // 2, self.SIZE // 2 - deltaX, self.SIZE // 2 + deltaY)
             
             decInDegree = planet.a_dec / math.pi * 180.0
             
-            radius = SIZE * (0.6 + decInDegree / 23.44 * DELTA_DECLINATION_SUN) / 2.0
+            radius = self.SIZE * (0.6 + decInDegree / 23.44 * self.DELTA_DECLINATION_SUN) / 2.0
             deltaX1 = int(math.sin(angle) * radius +0.5)
             deltaY1 = int(math.cos(angle) * radius +0.5)
             painter.setPen(Qt.PenStyle(Qt.SolidLine))
 
 
-            center = QPoint(SIZE // 2 - deltaX1, SIZE // 2 + deltaY1)
-            radius1 = RIM_PLANET // 2
+            center = QPoint(self.SIZE // 2 - deltaX1, self.SIZE // 2 + deltaY1)
+            radius1 = self.RIM_PLANET // 2
 
             # Fokuspunkt für schräge Beleuchtung von oben links
-            focal_point = QPoint(SIZE // 2 - deltaX1 - RIM_PLANET//5, SIZE // 2 + deltaY1 - RIM_PLANET//5)  # Verschoben nach oben links
+            focal_point = QPoint(self.SIZE // 2 - deltaX1 - self.RIM_PLANET//5, self.SIZE // 2 + deltaY1 - self.RIM_PLANET//5)  # Verschoben nach oben links
 
             # Radialer Gradient für goldene Farbe und Glanz
             gradient = QtGui.QRadialGradient(focal_point, radius1, focal_point)
@@ -714,28 +708,28 @@ class MainWindow(QtWidgets.QMainWindow):
             painter.setBrush(gradient)
             painter.setPen(Qt.NoPen)
             painter.drawEllipse(center, radius1, radius1)
-            painter.drawEllipse(SIZE // 2 - deltaX1 - RIM_PLANET//2, SIZE // 2 + deltaY1 - RIM_PLANET//2, RIM_PLANET - 1, RIM_PLANET - 1)
+            painter.drawEllipse(self.SIZE // 2 - deltaX1 - self.RIM_PLANET//2, self.SIZE // 2 + deltaY1 - self.RIM_PLANET//2, self.RIM_PLANET - 1, self.RIM_PLANET - 1)
             
             pen = QtGui.QPen()
             pen.setColor(Qt.black)
             pen.setWidth(1)
             painter.setPen(pen)
-            radius2 = SIZE * (0.6 + decInDegree / 23.44 * DELTA_DECLINATION_SUN) / 2.0 + RIM_1
+            radius2 = self.SIZE * (0.6 + decInDegree / 23.44 * self.DELTA_DECLINATION_SUN) / 2.0 + self.RIM_1
             deltaX2 = int(math.sin(angle) * radius2+0.5)
             deltaY2 = int(math.cos(angle) * radius2+0.5)
             painter.save()
             font=QtGui.QFont()
             font.setPixelSize(18)
             painter.setFont(font)
-            painter.translate(SIZE // 2 - deltaX2, SIZE // 2 + deltaY2)
+            painter.translate(self.SIZE // 2 - deltaX2, self.SIZE // 2 + deltaY2)
             painter.rotate(angle * 180.0 / math.pi + 180.0)
-            painter.drawText(-RIM_1//2, RIM_1//2, symbol)
+            painter.drawText(-self.RIM_1//2, self.RIM_1//2, symbol)
             painter.restore()
             painter.end()
 
-        celestialBodies = [(SUN.earth_distance, self.drawSun)]
-        for (planet, symbol) in PLANETS:
-            planet.compute(LOCATION)
+        celestialBodies = [(self.SUN.earth_distance, self.drawSun)]
+        for (planet, symbol) in self.PLANETS:
+            planet.compute(self.location)
             def outer():
                 (planet1, symbol1) = (planet, symbol)
                 return lambda: drawPlanet(planet1, symbol1)
@@ -748,11 +742,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         
           
-
-        
+       
         
 app = QtWidgets.QApplication(sys.argv)
-window = MainWindow()
+window = MainWindow(config)
 
 def saveImage():
     imageVar = QtGui.QImage(window.size(), QtGui.QImage.Format.Format_ARGB32)
@@ -769,7 +762,7 @@ window.show()
 timer = QtCore.QTimer()
 timer.timeout.connect(redraw)
 
-timer.start(60000 if not SIMULATE else SIMULATION_REDRAW_IN_S*1000)
+timer.start(60000 if not config.simulate else config.simulation_redraw_s * 1000)
 
 saveImage()
 app.exec_()
