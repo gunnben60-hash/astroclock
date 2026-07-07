@@ -37,7 +37,6 @@ class Config:
         self.timezone = 'Europe/Berlin'
         self.simulate = False
         self.show_planets = True
-        self.simulation_redraw_s = 60
         self.simulation_time_step_s = 60
         self.simulation_start_time = None
 
@@ -72,8 +71,6 @@ class Config:
                         config.timezone = value
                     elif key == 'SIMULATE':
                         config.simulate = (value.lower() == 'true')
-                    elif key == 'SIMULATION_REDRAW_IN_S':
-                        config.simulation_redraw_s = int(value)
                     elif key == 'SIMULATION_TIME_STEP_IN_S':
                         config.simulation_time_step_s = int(value)
                     elif key == 'SHOW_PLANETS':
@@ -91,7 +88,6 @@ class Config:
             outfile.write(f'LAT={self.lat}\n')
             outfile.write(f'TIMEZONE={self.timezone}\n')
             outfile.write(f'SIMULATE={self.simulate}\n')
-            outfile.write(f'SIMULATION_REDRAW_IN_S={self.simulation_redraw_s}\n')
             outfile.write(f'SIMULATION_TIME_STEP_IN_S={self.simulation_time_step_s}\n')
             outfile.write(f'SHOW_PLANETS={self.show_planets}\n')
 
@@ -130,7 +126,6 @@ class MainWindow(QtWidgets.QMainWindow):
         canvas.fill(Qt.white)
         self.label.setPixmap(canvas)
         self.globalTime = None
-        
         self.label.installEventFilter(self)
         self.drawAll()
 
@@ -748,36 +743,23 @@ window = MainWindow(config)
 def saveImage():
     imageVar = QtGui.QImage(window.size(), QtGui.QImage.Format.Format_ARGB32)
     window.render(imageVar)
-    #imageVar.save("astroclock.png")
+    imageVar.save("astroclock.png")
 
 def redraw():
     window.drawAll()
     window.update()
-    saveImage()
+    #saveImage()
 
 window.show()    
 
 
-def startAlignedTimer():
+def drawAndScheduleNextRefresh():
+    redraw()
     now = datetime.datetime.now()
-    delay_ms = int((60 - now.second - now.microsecond / 1_000_000) * 1000)
-
-    # einmaliger Start zur Synchronisation
-    QtCore.QTimer.singleShot(delay_ms, startRegularTimer)
+    delay_ms = int((60.0 - now.second - now.microsecond / 1_000_000) * 1000.0) + 2
+    QtCore.QTimer.singleShot(delay_ms, drawAndScheduleNextRefresh)
 
 
-def startRegularTimer():
-    redraw()  
-
-    interval = 60000 if not config.simulate else config.simulation_redraw_s * 1000
-
-    timer = QtCore.QTimer()
-    timer.timeout.connect(redraw)
-    timer.start(interval)
-
-    global redrawTimer
-    redrawTimer = timer
-
-startAlignedTimer()
-saveImage()
+drawAndScheduleNextRefresh()
+#saveImage()
 app.exec_()
