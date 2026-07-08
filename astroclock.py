@@ -756,7 +756,7 @@ window.show()
 def drawAndScheduleNextRefresh():
     redraw()
     now = datetime.datetime.now()
-    delay_ms = int((60.0 - now.second - now.microsecond / 1_000_000) * 1000.0) + 2
+    delay_ms = int((60.0 - now.second - 0.000001*now.microsecond) * 1000.0) + 2
     QtCore.QTimer.singleShot(delay_ms, drawAndScheduleNextRefresh)
 
 
