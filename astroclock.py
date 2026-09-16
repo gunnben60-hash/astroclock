@@ -39,6 +39,7 @@ class Config:
         self.show_planets = True
         self.simulation_time_step_s = 60
         self.simulation_start_time = None
+        self.small = False
 
     @staticmethod
     def parseDateString(date_string, timezone):
@@ -77,6 +78,8 @@ class Config:
                         config.show_planets = (value.lower() == 'true')
                     elif key == 'SIMULATION_START_TIME':
                         config.simulation_start_time = cls.parseDateString(value, config.timezone)
+                    elif key == 'SMALL':
+                        config.small = (value.lower() == 'true')
         else:
             config.save()
         return config
@@ -90,6 +93,7 @@ class Config:
             outfile.write(f'SIMULATE={self.simulate}\n')
             outfile.write(f'SIMULATION_TIME_STEP_IN_S={self.simulation_time_step_s}\n')
             outfile.write(f'SHOW_PLANETS={self.show_planets}\n')
+            outfile.write(f'SMALL={self.small}\n')
 
             start = self.simulation_start_time or datetime.datetime.now(ZoneInfo(self.timezone))
             outfile.write(f'SIMULATION_START_TIME={start.strftime(self.DATE_FORMAT)}\n')
@@ -106,6 +110,8 @@ class MainWindow(QtWidgets.QMainWindow):
     SIZE = 600
     RIM_1 = 20
     RIM_PLANET = 10
+    FONT_SIZE_SYMBOL_CLOCK = 20
+    FONT_SIZE_SYMBOL_ZODIAC = 18
     TEXT_HEIGHT = 270
     SYMBOL_CLOCK = ['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI']
     SYMBOL_ZODIAC = ['♈︎', '♉︎', '♊︎', '♋︎', '♌︎', '♍︎', '♎︎', '♏︎', '♐︎', '♑︎', '♒︎', '♓︎']
@@ -119,6 +125,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle('Astrologion')
         
         self.config = config
+        if self.config.small:
+            self.SIZE = 450
+            self.RIM_1 = 18
+            self.RIM_PLANET = 9
+            self.FONT_SIZE_SYMBOL_CLOCK = 18
+            self.FONT_SIZE_SYMBOL_ZODIAC = 16
         self.location = ephem.Observer()
         self.location.lon, self.location.lat  = str(self.config.lon), str(self.config.lat)
         self.label = QtWidgets.QLabel()
@@ -249,7 +261,7 @@ class MainWindow(QtWidgets.QMainWindow):
         painter.drawEllipse(self.RIM_1, self.RIM_1, self.SIZE-2*self.RIM_1, self.SIZE-2*self.RIM_1)
         
         font=QtGui.QFont()
-        font.setPixelSize(20)
+        font.setPixelSize(self.FONT_SIZE_SYMBOL_CLOCK)
         painter.setFont(font)
         
         painter.drawText(self.RIM_1//4, self.RIM_1, '<')
@@ -359,7 +371,7 @@ class MainWindow(QtWidgets.QMainWindow):
             painter.drawLine(self.SIZE // 2 - deltaX2, self.SIZE // 2 + deltaY2, self.SIZE // 2 - deltaX1, self.SIZE // 2 + deltaY1)
             
         font=QtGui.QFont()
-        font.setPixelSize(18)
+        font.setPixelSize(self.FONT_SIZE_SYMBOL_ZODIAC)
         painter.setFont(font)            
             
         for i in range(12):
