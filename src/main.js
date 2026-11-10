@@ -511,9 +511,9 @@ function drawClock(data) {
     context.strokeStyle = index % 6 === 0 ? "#4d5e51" : "#aeb4a9";
     context.lineWidth = index % 6 === 0 ? 1.7 : 1;
     context.stroke();
-    const labelPosition = polar(angle, 280);
+    const labelPosition = polar(angle, 294);
     context.fillStyle = "#29362e";
-    context.font = `${index % 2 === 0 ? "700 14px" : "500 11px"} 'DM Mono', monospace`;
+    context.font = "500 13px 'DM Mono', monospace";
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillText(["XII", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI"][index % 12], labelPosition.x, labelPosition.y);
@@ -523,18 +523,18 @@ function drawClock(data) {
   for (let index = 0; index < 12; index += 1) {
     const boundaryRightAscension = eclipticLongitudeToRightAscension(index * 30);
     const angle = siderealAngle - boundaryRightAscension + Math.PI;
-    const inner = polar(angle, 176);
-    const outer = polar(angle, 216);
+    const inner = polar(angle, 112);
+    const outer = polar(angle, 144);
     context.beginPath();
     context.moveTo(inner.x, inner.y);
     context.lineTo(outer.x, outer.y);
-    context.strokeStyle = index === 0 ? "#d46a4b" : "#9ba69a";
-    context.lineWidth = index === 0 ? 1.8 : 1;
+    context.strokeStyle = index === 0 ? "#d46a4b" : "#b4a16e";
+    context.lineWidth = index === 0 ? 1.8 : 1.15;
     context.stroke();
     const signRightAscension = eclipticLongitudeToRightAscension(index * 30 + 15);
-    const sign = polar(siderealAngle - signRightAscension + Math.PI, 195);
-    context.fillStyle = "#68776b";
-    context.font = "18px 'Segoe UI Symbol', 'Noto Sans Symbols 2', serif";
+    const sign = polar(siderealAngle - signRightAscension + Math.PI, 127);
+    context.fillStyle = "#4e6258";
+    context.font = "17px 'Segoe UI Symbol', 'Noto Sans Symbols 2', serif";
     context.fillText(SYMBOLS[index], sign.x, sign.y);
   }
 
