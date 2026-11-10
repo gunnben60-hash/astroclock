@@ -186,6 +186,45 @@ function drawClock(data) {
     context.stroke();
   }
 
+  const latitude = location.latitude * Math.PI / 180;
+  const horizonSamples = 720;
+  const altitudeLines = [
+    { degrees: 0, color: "#9ba69a", width: 1.25 },
+    { degrees: -6, color: "#929894", width: 1 },
+    { degrees: -12, color: "#818783", width: 1 },
+    { degrees: -18, color: "#818783", width: 1 },
+  ];
+  for (const altitudeLine of altitudeLines) {
+    const altitude = altitudeLine.degrees * Math.PI / 180;
+    let drawingLine = false;
+    context.beginPath();
+    for (let sample = 0; sample <= horizonSamples; sample += 1) {
+      const azimuth = Math.PI * 2 * sample / horizonSamples;
+      const declination = Math.asin(
+        Math.sin(latitude) * Math.sin(altitude)
+        - Math.cos(latitude) * Math.cos(azimuth) * Math.cos(altitude),
+      );
+      const hourAngle = Math.atan2(
+        Math.sin(latitude) * Math.cos(azimuth)
+          + Math.cos(latitude) * Math.tan(altitude),
+        Math.sin(azimuth),
+      ) + Math.PI / 2;
+      const declinationDegrees = declination * 180 / Math.PI;
+      const radius = 216 + declinationDegrees / 23.44 * 72;
+      if (radius <= 0 || radius > 327) {
+        drawingLine = false;
+        continue;
+      }
+      const point = polar(hourAngle, radius);
+      if (drawingLine) context.lineTo(point.x, point.y);
+      else context.moveTo(point.x, point.y);
+      drawingLine = true;
+    }
+    context.strokeStyle = altitudeLine.color;
+    context.lineWidth = altitudeLine.width;
+    context.stroke();
+  }
+
   for (let index = 0; index < 24; index += 1) {
     const angle = index * Math.PI / 12;
     const outer = polar(angle, 327);
