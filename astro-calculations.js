@@ -15,6 +15,17 @@ const BABYLONIAN_MONTH_NAMES = [
   "Šabatu",
   "Addaru",
 ];
+const LILIUS_CLAVIUS_EPACT_STARTS = [0, 29, 0, 29, 28, 27, 26, 25, 23, 22, 21, 20];
+const LILIUS_CLAVIUS_MONTH_LENGTHS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+const LILIUS_CLAVIUS_DOUBLE_EPACT_DAYS = new Set([
+  "2:5",
+  "4:5",
+  "6:3",
+  "8:1",
+  "9:29",
+  "11:27",
+]);
+const LILIUS_CLAVIUS_SPECIAL_NEW_LIGHT_DAYS = [6, 4, 6, 4, 4, 2, [2, 31], 30, 28, 28, 26, 26];
 const KM_PER_AU = 149597870.7;
 const MEAN_MOON_DISTANCE_KM = 381000;
 const SIDEREAL_HOURS_PER_CIRCLE = 24;
@@ -220,6 +231,128 @@ function getAstronomicalBabylonianMonthName(beginOfMonth, observer) {
   return monthName;
 }
 
+function getGregorianEpact(year) {
+  const goldenNumber = year % 19 + 1;
+  const julianEpact = (11 * (goldenNumber - 1)) % 30;
+  const century = Math.floor(year / 100);
+  const solarCorrection = Math.floor(3 * (century + 1) / 4);
+  const lunarCorrection = Math.floor((8 * century + 13) / 25);
+  return {
+    goldenNumber,
+    epact: modulo(julianEpact - solarCorrection + lunarCorrection + 8, 30),
+  };
+}
+
+function normalizeFixedCalendarDate(year, month, day) {
+  const monthLength = LILIUS_CLAVIUS_MONTH_LENGTHS[month - 1];
+  if (day > monthLength) {
+    day -= monthLength;
+    month += 1;
+    if (month > 12) {
+      month = 1;
+      year += 1;
+    }
+  }
+  return { year, month, day };
+}
+
+function getLiliusClaviusFullMoons(year) {
+  const { goldenNumber, epact } = getGregorianEpact(year);
+  const dates = [];
+
+  if (epact === 25 && goldenNumber > 11) {
+    for (let month = 1; month <= 12; month += 1) {
+      const newLightDays = LILIUS_CLAVIUS_SPECIAL_NEW_LIGHT_DAYS[month - 1];
+      const days = Array.isArray(newLightDays) ? newLightDays : [newLightDays];
+      for (const day of days) {
+        dates.push(normalizeFixedCalendarDate(year, month, day + 13));
+      }
+    }
+    return dates;
+  }
+
+  for (let month = 1; month <= 12; month += 1) {
+    const monthIndex = month - 1;
+    for (let dayIndex = 0; dayIndex < LILIUS_CLAVIUS_MONTH_LENGTHS[monthIndex]; dayIndex += 1) {
+      if (month === 3 && dayIndex < 6) continue;
+      const predictedEpact = modulo(LILIUS_CLAVIUS_EPACT_STARTS[monthIndex] - dayIndex, 30);
+      const hasDoubleEpact = LILIUS_CLAVIUS_DOUBLE_EPACT_DAYS.has(`${month}:${dayIndex + 1}`);
+      if (epact === predictedEpact || (hasDoubleEpact && epact === 24)) {
+        dates.push(normalizeFixedCalendarDate(year, month, dayIndex + 14));
+      }
+    }
+  }
+  return dates;
+}
+
+function getNextLiliusClaviusFullMoon(monthStart, timeZone) {
+  const localStart = getZonedParts(monthStart, timeZone);
+  const localStartValue = Date.UTC(
+    localStart.year,
+    localStart.month - 1,
+    localStart.day,
+    localStart.hour,
+    localStart.minute,
+    localStart.second,
+  );
+  const candidates = [];
+  for (let year = localStart.year - 1; year <= localStart.year + 1; year += 1) {
+    for (const fixedDate of getLiliusClaviusFullMoons(year)) {
+      const candidateValue = Date.UTC(fixedDate.year, fixedDate.month - 1, fixedDate.day);
+      if (candidateValue > localStartValue) candidates.push(fixedDate);
+    }
+  }
+  candidates.sort((left, right) => Date.UTC(left.year, left.month - 1, left.day)
+    - Date.UTC(right.year, right.month - 1, right.day));
+  const nextFullMoon = candidates[0];
+  if (!nextFullMoon) throw new RangeError("Could not find the next Lilius-Clavius full moon.");
+  return nextFullMoon;
+}
+
+function getLiliusClaviusMonthName(beginOfMonth, timeZone) {
+  const nextFullMoon = getNextLiliusClaviusFullMoon(beginOfMonth, timeZone);
+  const monthDay = nextFullMoon.month * 100 + nextFullMoon.day;
+  let seasonName;
+  let seasonStartMonth;
+  let seasonStartDay;
+  let seasonStartYear = nextFullMoon.year;
+
+  if (monthDay >= 321 && monthDay <= 621) {
+    seasonName = "Frühlingsmond";
+    seasonStartMonth = 3;
+    seasonStartDay = 21;
+  } else if (monthDay >= 622 && monthDay <= 922) {
+    seasonName = "Sommermond";
+    seasonStartMonth = 6;
+    seasonStartDay = 22;
+  } else if (monthDay >= 923 && monthDay <= 1220) {
+    seasonName = "Herbstmond";
+    seasonStartMonth = 9;
+    seasonStartDay = 23;
+  } else {
+    seasonName = "Wintermond";
+    seasonStartMonth = 12;
+    seasonStartDay = 21;
+    if (monthDay <= 320) seasonStartYear -= 1;
+  }
+
+  const seasonStartValue = Date.UTC(seasonStartYear, seasonStartMonth - 1, seasonStartDay);
+  const targetFullMoonValue = Date.UTC(nextFullMoon.year, nextFullMoon.month - 1, nextFullMoon.day);
+  const fixedFullMoons = new Map();
+  for (let year = seasonStartYear; year <= nextFullMoon.year; year += 1) {
+    for (const fullMoon of getLiliusClaviusFullMoons(year)) {
+      const value = Date.UTC(fullMoon.year, fullMoon.month - 1, fullMoon.day);
+      if (value >= seasonStartValue && value <= targetFullMoonValue) {
+        fixedFullMoons.set(value, fullMoon);
+      }
+    }
+  }
+
+  const ordinal = fixedFullMoons.size;
+  if (ordinal < 1) throw new RangeError("Could not count Lilius-Clavius full moons in the season.");
+  return `${seasonName}${ordinal > 1 ? ` ${ordinal}` : ""}`;
+}
+
 function getMoonAboveHorizonDuration(observer, transit) {
   if (!transit) return null;
 
@@ -325,6 +458,7 @@ export function calculateAstroData({
       ...moonPosition,
       astronomicalMonth: astronomicalMonth.name,
       babylonianMonth: getAstronomicalBabylonianMonthName(astronomicalMonth.start, observer),
+      liliusClaviusMonth: getLiliusClaviusMonthName(astronomicalMonth.start, timeZone),
       phaseAngleDegrees: moonPhaseAngle,
       illuminationPercent: moonIllumination.phase_fraction * 100,
       waxing: nextFullMoon.date < nextNewMoon.date,
