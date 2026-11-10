@@ -247,6 +247,33 @@ function drawSunSphere(targetContext, x, y, radius) {
   targetContext.restore();
 }
 
+function drawSilverSphere(targetContext, x, y, radius) {
+  targetContext.save();
+  targetContext.shadowColor = "rgba(35, 48, 57, 0.4)";
+  targetContext.shadowBlur = radius * 0.55;
+  targetContext.beginPath();
+  targetContext.arc(x, y, radius, 0, Math.PI * 2);
+  const gradient = targetContext.createRadialGradient(
+    x - radius * 0.34,
+    y - radius * 0.4,
+    radius * 0.08,
+    x,
+    y,
+    radius,
+  );
+  gradient.addColorStop(0, "#ffffff");
+  gradient.addColorStop(0.38, "#dce3e5");
+  gradient.addColorStop(0.76, "#9aa8ae");
+  gradient.addColorStop(1, "#596970");
+  targetContext.fillStyle = gradient;
+  targetContext.fill();
+  targetContext.shadowBlur = 0;
+  targetContext.strokeStyle = "rgba(247, 249, 242, 0.9)";
+  targetContext.lineWidth = radius * 0.1;
+  targetContext.stroke();
+  targetContext.restore();
+}
+
 function getMoonLightDirection(moon, sun, siderealAngle) {
   const moonRa = moon.rightAscension;
   const moonDec = moon.declinationDegrees * Math.PI / 180;
@@ -542,18 +569,19 @@ function drawClock(data) {
     siderealAngle,
   );
   const bodies = [
-    { name: "Sonne", body: data.sun, color: "#d89432", symbol: "☉", size: 9 },
+    { name: "Sonne", body: data.sun, color: "#d89432" },
     {
       name: "Mond",
       body: { ...data.moon, ...geocentricMoon },
       color: "#667b83",
-      symbol: "☾",
-      size: 8,
     },
     ...data.planets.map((planet) => ({
-      name: planet.name, body: planet, color: "#d46a4b", symbol: PLANET_SYMBOLS[planet.name], size: 5,
+      name: planet.name,
+      body: planet,
+      color: "#aeb9bd",
+      symbol: PLANET_SYMBOLS[planet.name],
     })),
-  ];
+  ].sort((left, right) => right.body.distanceAU - left.body.distanceAU);
   for (const item of bodies) {
     const angle = siderealAngle - item.body.rightAscensionHours * Math.PI / 12 + Math.PI;
     const radius = 216 + item.body.declinationDegrees / 23.44 * 72;
@@ -569,15 +597,16 @@ function drawClock(data) {
     } else if (item.name === "Mond") {
       drawMoonSphere(context, point.x, point.y, 11.3, moonLightDirection);
     } else {
-      context.beginPath();
-      context.arc(point.x, point.y, item.size, 0, Math.PI * 2);
-      context.fillStyle = item.color;
-      context.fill();
-      context.fillStyle = "#28332d";
-      context.font = "15px 'Manrope', serif";
+      drawSilverSphere(context, point.x, point.y, 6);
+      const symbolPoint = polar(angle, radius + 18);
+      context.font = "bold 18px 'Segoe UI Symbol', 'Noto Sans Symbols 2', serif";
       context.textAlign = "center";
       context.textBaseline = "middle";
-      context.fillText(item.symbol, point.x, point.y);
+      context.lineWidth = 3;
+      context.strokeStyle = "rgba(251, 250, 245, 0.94)";
+      context.strokeText(item.symbol, symbolPoint.x, symbolPoint.y);
+      context.fillStyle = "#435761";
+      context.fillText(item.symbol, symbolPoint.x, symbolPoint.y);
     }
   }
 
