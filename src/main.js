@@ -161,9 +161,8 @@ function updateDisplay(data) {
   document.querySelector("#daylight").textContent = formatDuration(data.events.daylightHours);
   document.querySelector("#daylight-bar").style.width = `${Math.max(0, Math.min(100, (data.events.daylightHours ?? 0) / 24 * 100))}%`;
   document.querySelector("#moon-illumination").textContent = `${Math.round(data.moon.illuminationPercent)} % beleuchtet`;
-  document.querySelector("#moon-phase").textContent = getMoonPhase(data.moon.illuminationPercent, data.moon.waxing);
-  document.querySelector("#moon-disc").style.setProperty("--phase", `${data.moon.illuminationPercent}%`);
-  document.querySelector("#moon-disc").classList.toggle("waxing", data.moon.waxing);
+  document.querySelector("#moon-phase").textContent = getMoonPhase(data.moon.phaseAngleDegrees);
+  drawMoonDisc(data.moon.phaseAngleDegrees);
   dateInput.value = localInputValue(selectedDate);
   document.querySelector("#latitude-input").value = location.latitude;
   document.querySelector("#longitude-input").value = location.longitude;
@@ -175,12 +174,50 @@ function updateDisplay(data) {
   if (!Number.isFinite(parts.year)) throw new Error("Die gewählte Zeitzone ist ungültig.");
 }
 
-function getMoonPhase(illumination, waxing) {
-  if (illumination < 2) return "Neumond";
-  if (illumination > 98) return "Vollmond";
-  if (illumination < 48) return waxing ? "Zunehmende Sichel" : "Abnehmende Sichel";
-  if (illumination < 52) return waxing ? "Erstes Viertel" : "Letztes Viertel";
-  return waxing ? "Zunehmender Mond" : "Abnehmender Mond";
+function getMoonPhase(phaseAngleDegrees) {
+  const phaseAngle = ((phaseAngleDegrees % 360) + 360) % 360;
+  if (phaseAngle <= 15 || phaseAngle >= 345) return "Neumond";
+  if (phaseAngle < 83) return "Zunehmende Sichel";
+  if (phaseAngle <= 97) return "Erstes Viertel";
+  if (phaseAngle < 165) return "Zunehmender Mond";
+  if (phaseAngle <= 195) return "Vollmond";
+  if (phaseAngle < 263) return "Abnehmender Mond";
+  if (phaseAngle <= 277) return "Letztes Viertel";
+  return "Abnehmende Sichel";
+}
+
+function drawMoonDisc(phaseAngleDegrees) {
+  const moonCanvas = document.querySelector("#moon-disc");
+  const moonContext = moonCanvas.getContext("2d");
+  const size = moonCanvas.width;
+  const center = size / 2;
+  const radius = center - 3;
+  const phaseAngle = ((phaseAngleDegrees % 360) + 360) % 360 * Math.PI / 180;
+  const lightX = Math.sin(phaseAngle);
+  const lightZ = -Math.cos(phaseAngle);
+  const image = moonContext.createImageData(size, size);
+
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const normalX = (x + 0.5 - center) / radius;
+      const normalY = (y + 0.5 - center) / radius;
+      const squaredDistance = normalX * normalX + normalY * normalY;
+      if (squaredDistance > 1) continue;
+
+      const normalZ = Math.sqrt(1 - squaredDistance);
+      const illumination = normalX * lightX + normalZ * lightZ;
+      const blend = Math.max(0, Math.min(1, (illumination + 0.025) / 0.05));
+      const surfaceShade = 0.68 + 0.32 * Math.max(0, illumination);
+      const pixel = (y * size + x) * 4;
+      image.data[pixel] = 77 + (218 * surfaceShade - 77) * blend;
+      image.data[pixel + 1] = 94 + (219 * surfaceShade - 94) * blend;
+      image.data[pixel + 2] = 99 + (211 * surfaceShade - 99) * blend;
+      image.data[pixel + 3] = 255;
+    }
+  }
+
+  moonContext.clearRect(0, 0, size, size);
+  moonContext.putImageData(image, 0, 0);
 }
 
 function drawClock(data) {
