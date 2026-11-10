@@ -182,7 +182,8 @@ function drawClock(data) {
   for (const radius of [288, 216, 144]) {
     context.beginPath();
     context.arc(center, center, radius, 0, Math.PI * 2);
-    context.strokeStyle = radius === 216 ? "#e4b458" : "#e3e3da";
+    context.strokeStyle = radius === 216 ? "#e4b458" : "#d2ad43";
+    context.lineWidth = radius === 216 ? 1 : 1.15;
     context.stroke();
   }
 
@@ -222,6 +223,39 @@ function drawClock(data) {
     }
     context.strokeStyle = altitudeLine.color;
     context.lineWidth = altitudeLine.width;
+    context.stroke();
+  }
+
+  context.strokeStyle = "#d2ad43";
+  context.lineWidth = 1.15;
+  for (let hourDivision = -5; hourDivision <= 5; hourDivision += 1) {
+    let drawingTemporalLine = false;
+    context.beginPath();
+    for (let sample = 0; sample <= horizonSamples; sample += 1) {
+      const azimuth = Math.PI * 2 * sample / horizonSamples;
+      const declination = Math.asin(
+        -Math.cos(latitude) * Math.cos(azimuth),
+      );
+      const hourAngle = Math.atan2(
+        Math.sin(latitude) * Math.cos(azimuth),
+        Math.sin(azimuth),
+      ) + Math.PI / 2;
+      const declinationDegrees = declination * 180 / Math.PI;
+      const visibleDayArc = (hourAngle > 0 && hourAngle < Math.PI)
+        || (hourAngle > Math.PI && hourAngle < Math.PI * 1.5);
+      if (!visibleDayArc || declinationDegrees < -23.44 || declinationDegrees > 23.44) {
+        drawingTemporalLine = false;
+        continue;
+      }
+
+      const spanFromMeridian = (Math.PI - hourAngle) / 6;
+      const angle = Math.PI + spanFromMeridian * hourDivision;
+      const radius = 216 + declinationDegrees / 23.44 * 72;
+      const point = polar(angle, radius);
+      if (drawingTemporalLine) context.lineTo(point.x, point.y);
+      else context.moveTo(point.x, point.y);
+      drawingTemporalLine = true;
+    }
     context.stroke();
   }
 
