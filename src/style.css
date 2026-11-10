@@ -75,8 +75,10 @@ canvas:active { cursor: grabbing; }
 .moon-phase-events { display: grid; gap: 7px; margin-top: 14px; padding-top: 11px; border-top: 1px solid var(--line); }
 .moon-phase-event { display: flex; justify-content: space-between; gap: 12px; color: #647168; font-size: 10px; }
 .moon-phase-event time { color: var(--ink); font: 11px var(--mono); white-space: nowrap; }
-.hijri-month { display: flex; align-items: baseline; justify-content: flex-end; gap: 9px; margin-top: 12px; color: var(--muted); }
-.hijri-month-label { font: 9px var(--mono); letter-spacing: .4px; }
+.astronomical-month, .hijri-month { display: flex; align-items: baseline; justify-content: space-between; gap: 9px; margin-top: 12px; }
+.astronomical-month-label, .hijri-month-label { color: var(--muted); font: 9px var(--mono); letter-spacing: .4px; }
+.astronomical-month strong { color: var(--ink); font-size: 12px; font-weight: 700; }
+.hijri-month { justify-content: space-between; color: var(--muted); }
 .hijri-month strong { color: var(--ink); font-family: "Segoe UI", "Noto Naskh Arabic", serif; font-size: 15px; font-weight: 600; }
 .settings-section { padding: 17px 0; border-bottom: 1px solid var(--line); }
 .settings-section summary { display: flex; justify-content: space-between; cursor: pointer; list-style: none; color: #68736b; font: 10px var(--mono); letter-spacing: .5px; }

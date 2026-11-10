@@ -164,6 +164,7 @@ function updateDisplay(data) {
   document.querySelector("#moon-phase").textContent = getMoonPhase(data.moon.phaseAngleDegrees);
   drawMoonDisc(data.moon.phaseAngleDegrees);
   updateMoonPhaseEvents(data.moon);
+  document.querySelector("#astronomical-month-name").textContent = data.moon.astronomicalMonth;
   document.querySelector("#hijri-month-name").textContent = new Intl.DateTimeFormat(
     "ar-SA-u-ca-islamic-umalqura",
     { calendar: "islamic-umalqura", timeZone: location.timeZone, month: "long" },

@@ -111,6 +111,69 @@ function getMoonNode(date) {
   };
 }
 
+function getAstronomicalMoonMonth(date) {
+  const searchStart = new Date(date.getTime() - 40 * 86400000);
+  const firstNewMoon = Astronomy.SearchMoonPhase(0, searchStart, 40);
+  if (!firstNewMoon) throw new RangeError("Could not find the surrounding new moon.");
+
+  const followingNewMoon = Astronomy.SearchMoonPhase(
+    0,
+    new Date(firstNewMoon.date.getTime() + 1000),
+    40,
+  );
+  const previousNewMoon = followingNewMoon && followingNewMoon.date <= date
+    ? followingNewMoon
+    : firstNewMoon;
+  const currentFullMoon = Astronomy.SearchMoonPhase(
+    180,
+    new Date(previousNewMoon.date.getTime() + 1000),
+    40,
+  );
+  if (!currentFullMoon) throw new RangeError("Could not find the full moon for this lunation.");
+
+  const year = date.getUTCFullYear();
+  const seasonStarts = [];
+  for (let seasonYear = year - 1; seasonYear <= year + 1; seasonYear += 1) {
+    const seasons = Astronomy.Seasons(seasonYear);
+    seasonStarts.push(
+      { date: seasons.dec_solstice.date, name: "Wintermond" },
+      { date: seasons.mar_equinox.date, name: "Frühlingsmond" },
+      { date: seasons.jun_solstice.date, name: "Sommermond" },
+      { date: seasons.sep_equinox.date, name: "Herbstmond" },
+    );
+  }
+
+  const firstFullMoons = seasonStarts
+    .map((season) => ({
+      ...season,
+      firstFullMoon: Astronomy.SearchMoonPhase(
+        180,
+        new Date(season.date.getTime() + 1000),
+        40,
+      ),
+    }))
+    .filter((season) => season.firstFullMoon
+      && season.firstFullMoon.date <= currentFullMoon.date)
+    .sort((left, right) => left.date - right.date);
+  const currentSeason = firstFullMoons.at(-1);
+  if (!currentSeason) throw new RangeError("Could not determine the astronomical moon season.");
+
+  let ordinal = 1;
+  let fullMoon = currentSeason.firstFullMoon;
+  while (fullMoon.date.getTime() < currentFullMoon.date.getTime() - 60000) {
+    const nextFullMoon = Astronomy.SearchMoonPhase(
+      180,
+      new Date(fullMoon.date.getTime() + 1000),
+      40,
+    );
+    if (!nextFullMoon || nextFullMoon.date > currentFullMoon.date) break;
+    fullMoon = nextFullMoon;
+    ordinal += 1;
+  }
+
+  return `${currentSeason.name}${ordinal > 1 ? ` ${ordinal}` : ""}`;
+}
+
 function getMoonAboveHorizonDuration(observer, transit) {
   if (!transit) return null;
 
@@ -213,6 +276,7 @@ export function calculateAstroData({
     },
     moon: {
       ...moonPosition,
+      astronomicalMonth: getAstronomicalMoonMonth(date),
       phaseAngleDegrees: moonPhaseAngle,
       illuminationPercent: moonIllumination.phase_fraction * 100,
       waxing: nextFullMoon.date < nextNewMoon.date,
