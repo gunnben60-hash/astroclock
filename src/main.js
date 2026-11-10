@@ -163,6 +163,11 @@ function updateDisplay(data) {
   document.querySelector("#moon-illumination").textContent = `${Math.round(data.moon.illuminationPercent)} % beleuchtet`;
   document.querySelector("#moon-phase").textContent = getMoonPhase(data.moon.phaseAngleDegrees);
   drawMoonDisc(data.moon.phaseAngleDegrees);
+  updateMoonPhaseEvents(data.moon);
+  document.querySelector("#hijri-month-name").textContent = new Intl.DateTimeFormat(
+    "ar-SA-u-ca-islamic-umalqura",
+    { calendar: "islamic-umalqura", timeZone: location.timeZone, month: "long" },
+  ).format(selectedDate);
   dateInput.value = localInputValue(selectedDate);
   document.querySelector("#latitude-input").value = location.latitude;
   document.querySelector("#longitude-input").value = location.longitude;
@@ -184,6 +189,33 @@ function getMoonPhase(phaseAngleDegrees) {
   if (phaseAngle < 263) return "Abnehmender Mond";
   if (phaseAngle <= 277) return "Letztes Viertel";
   return "Abnehmende Sichel";
+}
+
+function updateMoonPhaseEvents(moon) {
+  const upcomingPhases = [
+    { name: "Neumond", date: moon.nextNewMoon },
+    { name: "Vollmond", date: moon.nextFullMoon },
+  ].sort((left, right) => left.date - right.date);
+  const formatter = getFormatter(location.timeZone, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+  const list = document.querySelector("#moon-phase-events");
+  list.replaceChildren(...upcomingPhases.map(({ name, date }) => {
+    const row = document.createElement("div");
+    row.className = "moon-phase-event";
+    const phaseName = document.createElement("span");
+    phaseName.textContent = name;
+    const phaseDate = document.createElement("time");
+    phaseDate.dateTime = date.toISOString();
+    phaseDate.textContent = formatter.format(date);
+    row.append(phaseName, phaseDate);
+    return row;
+  }));
 }
 
 function drawMoonDisc(phaseAngleDegrees) {
