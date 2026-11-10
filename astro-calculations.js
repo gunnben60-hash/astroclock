@@ -103,6 +103,11 @@ function getMoonNode(date) {
     direction: nearest.kind === Astronomy.NodeEventKind.Ascending
       ? "ascending"
       : "descending",
+    ascendingLongitudeDegrees: modulo(
+      Astronomy.EclipticGeoMoon(nearest.time.date).lon
+        + (nearest.kind === Astronomy.NodeEventKind.Ascending ? 0 : 180),
+      360,
+    ),
   };
 }
 

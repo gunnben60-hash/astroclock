@@ -7,6 +7,7 @@ const DEFAULT_LOCATION = {
 };
 const SYMBOLS = ["♈︎", "♉︎", "♊︎", "♋︎", "♌︎", "♍︎", "♎︎", "♏︎", "♐︎", "♑︎", "♒︎", "♓︎"];
 const OBLIQUITY_RADIANS = 23.43928 * Math.PI / 180;
+const LUNAR_ORBIT_INCLINATION_RADIANS = 5.145 * Math.PI / 180;
 const PLANET_SYMBOLS = {
   Mercury: "☿",
   Venus: "♀",
@@ -102,6 +103,26 @@ function eclipticLongitudeToRightAscension(longitudeDegrees) {
     Math.cos(longitude),
   );
   return (rightAscension + Math.PI * 2) % (Math.PI * 2);
+}
+
+function eclipticToEquatorial(longitudeDegrees, latitudeDegrees) {
+  const longitude = longitudeDegrees * Math.PI / 180;
+  const latitude = latitudeDegrees * Math.PI / 180;
+  const rightAscension = Math.atan2(
+    Math.sin(longitude) * Math.cos(OBLIQUITY_RADIANS)
+      - Math.tan(latitude) * Math.sin(OBLIQUITY_RADIANS),
+    Math.cos(longitude),
+  );
+  const declination = Math.asin(
+    Math.sin(latitude) * Math.cos(OBLIQUITY_RADIANS)
+      + Math.cos(latitude) * Math.sin(OBLIQUITY_RADIANS) * Math.sin(longitude),
+  );
+  const normalizedRightAscension = (rightAscension + Math.PI * 2) % (Math.PI * 2);
+  return {
+    rightAscension: normalizedRightAscension,
+    rightAscensionHours: normalizedRightAscension * 12 / Math.PI,
+    declinationDegrees: declination * 180 / Math.PI,
+  };
 }
 
 function render() {
@@ -296,16 +317,89 @@ function drawClock(data) {
     context.fillText(SYMBOLS[index], sign.x, sign.y);
   }
 
+  const eclipticLongitudeAt = (fraction) => fraction * 360;
+  const drawOrbitalPlane = (latitudeAt, color, lineWidth, dotted = false) => {
+    context.beginPath();
+    for (let sample = 0; sample <= 360; sample += 1) {
+      const longitude = eclipticLongitudeAt(sample / 360);
+      const equatorial = eclipticToEquatorial(longitude, latitudeAt(longitude));
+      const angle = siderealAngle - equatorial.rightAscension + Math.PI;
+      const radius = 216 + equatorial.declinationDegrees / 23.44 * 72;
+      const point = polar(angle, radius);
+      if (sample === 0) context.moveTo(point.x, point.y);
+      else context.lineTo(point.x, point.y);
+    }
+    context.strokeStyle = color;
+    context.lineWidth = lineWidth;
+    context.setLineDash(dotted ? [2, 4] : []);
+    context.stroke();
+    context.setLineDash([]);
+  };
+
+  drawOrbitalPlane(() => 0, "#477caa", 1.7);
+  const moonLongitudeRadians = data.moon.eclipticLongitudeDegrees * Math.PI / 180;
+  const moonLatitudeRadians = data.moon.eclipticLatitudeDegrees * Math.PI / 180;
+  const ascendingNodeRadians = data.lunarNode.ascendingLongitudeDegrees * Math.PI / 180;
+  const longitudeFromNode = Math.sin(moonLongitudeRadians - ascendingNodeRadians);
+  let instantaneousInclination = LUNAR_ORBIT_INCLINATION_RADIANS;
+  if (Math.abs(longitudeFromNode) > 0.05) {
+    const sineInclination = Math.sin(moonLatitudeRadians) / longitudeFromNode;
+    if (Math.abs(sineInclination) <= 1) {
+      instantaneousInclination = Math.asin(sineInclination);
+    }
+  }
+  drawOrbitalPlane(
+    (longitude) => Math.asin(
+      Math.sin(instantaneousInclination)
+        * Math.sin((longitude - data.lunarNode.ascendingLongitudeDegrees) * Math.PI / 180),
+    ) * 180 / Math.PI,
+    "#477caa",
+    1.35,
+    true,
+  );
+
+  for (const node of [
+    { longitude: data.lunarNode.ascendingLongitudeDegrees, symbol: "☊" },
+    { longitude: (data.lunarNode.ascendingLongitudeDegrees + 180) % 360, symbol: "☋" },
+  ]) {
+    const equatorial = eclipticToEquatorial(node.longitude, 0);
+    const angle = siderealAngle - equatorial.rightAscension + Math.PI;
+    const radius = 216 + equatorial.declinationDegrees / 23.44 * 72;
+    const point = polar(angle, radius);
+    context.beginPath();
+    context.arc(point.x, point.y, 6, 0, Math.PI * 2);
+    context.fillStyle = "#fbfaf5";
+    context.fill();
+    context.strokeStyle = "#477caa";
+    context.lineWidth = 1.5;
+    context.stroke();
+    context.fillStyle = "#315d80";
+    context.font = "bold 14px 'Segoe UI Symbol', 'Noto Sans Symbols 2', serif";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(node.symbol, point.x, point.y);
+  }
+
+  const geocentricMoon = eclipticToEquatorial(
+    data.moon.eclipticLongitudeDegrees,
+    data.moon.eclipticLatitudeDegrees,
+  );
   const bodies = [
     { name: "Sonne", body: data.sun, color: "#d89432", symbol: "☉", size: 9 },
-    { name: "Mond", body: data.moon, color: "#667b83", symbol: "☾", size: 8 },
+    {
+      name: "Mond",
+      body: { ...data.moon, ...geocentricMoon },
+      color: "#667b83",
+      symbol: "☾",
+      size: 8,
+    },
     ...data.planets.map((planet) => ({
       name: planet.name, body: planet, color: "#d46a4b", symbol: PLANET_SYMBOLS[planet.name], size: 5,
     })),
   ];
   for (const item of bodies) {
     const angle = siderealAngle - item.body.rightAscensionHours * Math.PI / 12 + Math.PI;
-    const radius = 216 + Math.max(-1, Math.min(1, item.body.declinationDegrees / 23.44)) * 72;
+    const radius = 216 + item.body.declinationDegrees / 23.44 * 72;
     const point = polar(angle, radius);
     context.beginPath();
     context.moveTo(center, center);
