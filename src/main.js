@@ -361,6 +361,48 @@ function drawMoonSphere(targetContext, x, y, radius, lightDirection) {
   targetContext.restore();
 }
 
+function drawTwilightShading(targetContext, latitudeRadians) {
+  const layerSize = 720;
+  const center = layerSize / 2;
+  const layer = document.createElement("canvas");
+  layer.width = layerSize;
+  layer.height = layerSize;
+  const layerContext = layer.getContext("2d");
+  const image = layerContext.createImageData(layerSize, layerSize);
+  const sinLatitude = Math.sin(latitudeRadians);
+  const cosLatitude = Math.cos(latitudeRadians);
+
+  for (let y = 0; y < layerSize; y += 1) {
+    const deltaY = y + 0.5 - center;
+    for (let x = 0; x < layerSize; x += 1) {
+      const deltaX = x + 0.5 - center;
+      const radius = Math.hypot(deltaX, deltaY);
+      if (radius > 327) continue;
+
+      const declination = (radius - 216) / 72 * 23.44 * Math.PI / 180;
+      const cosHourAngle = radius > 0 ? -deltaY / radius : -1;
+      const sinAltitude = sinLatitude * Math.sin(declination)
+        + cosLatitude * Math.cos(declination) * cosHourAngle;
+      const altitude = Math.asin(Math.max(-1, Math.min(1, sinAltitude))) * 180 / Math.PI;
+      let shade;
+      if (altitude < -18) shade = [34, 52, 67, 36];
+      else if (altitude < -12) shade = [49, 68, 81, 29];
+      else if (altitude < -6) shade = [69, 86, 96, 21];
+      else if (altitude < 0) shade = [93, 107, 114, 13];
+      else continue;
+
+      const pixel = (y * layerSize + x) * 4;
+      image.data[pixel] = shade[0];
+      image.data[pixel + 1] = shade[1];
+      image.data[pixel + 2] = shade[2];
+      image.data[pixel + 3] = shade[3];
+    }
+  }
+
+  layerContext.putImageData(image, 0, 0);
+  targetContext.drawImage(layer, 0, 0);
+}
+
 function drawClock(data) {
   const scale = window.devicePixelRatio || 1;
   canvas.width = 720 * scale;
@@ -387,9 +429,10 @@ function drawClock(data) {
   }
 
   const latitude = location.latitude * Math.PI / 180;
+  drawTwilightShading(context, latitude);
   const horizonSamples = 720;
   const altitudeLines = [
-    { degrees: 0, color: "#9ba69a", width: 1.25 },
+    { degrees: 0, color: "#66766e", width: 1.8 },
     { degrees: -6, color: "#929894", width: 1 },
     { degrees: -12, color: "#818783", width: 1 },
     { degrees: -18, color: "#818783", width: 1 },
