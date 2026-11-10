@@ -588,14 +588,14 @@ function drawClock(data) {
     const radius = 216 + equatorial.declinationDegrees / 23.44 * 72;
     const point = polar(angle, radius);
     context.beginPath();
-    context.arc(point.x, point.y, 6, 0, Math.PI * 2);
+    context.arc(point.x, point.y, 9, 0, Math.PI * 2);
     context.fillStyle = "#fbfaf5";
     context.fill();
     context.strokeStyle = "#477caa";
-    context.lineWidth = 1.5;
+    context.lineWidth = 2;
     context.stroke();
     context.fillStyle = "#315d80";
-    context.font = "bold 14px 'Segoe UI Symbol', 'Noto Sans Symbols 2', serif";
+    context.font = "bold 12px 'Segoe UI Symbol', 'Noto Sans Symbols 2', serif";
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillText(node.symbol, point.x, point.y);
