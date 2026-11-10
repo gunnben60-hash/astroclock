@@ -5,7 +5,8 @@ const DEFAULT_LOCATION = {
   longitude: 13.066667,
   timeZone: "Europe/Berlin",
 };
-const SYMBOLS = ["AR", "TA", "GE", "CA", "LE", "VI", "LI", "SC", "SG", "CP", "AQ", "PI"];
+const SYMBOLS = ["♈︎", "♉︎", "♊︎", "♋︎", "♌︎", "♍︎", "♎︎", "♏︎", "♐︎", "♑︎", "♒︎", "♓︎"];
+const OBLIQUITY_RADIANS = 23.43928 * Math.PI / 180;
 const PLANET_SYMBOLS = {
   Mercury: "☿",
   Venus: "♀",
@@ -92,6 +93,15 @@ function formatDuration(hours) {
   if (hours === null) return "Nicht verfügbar";
   const roundedMinutes = Math.round(hours * 60);
   return `${Math.floor(roundedMinutes / 60)} Std. ${String(roundedMinutes % 60).padStart(2, "0")} Min.`;
+}
+
+function eclipticLongitudeToRightAscension(longitudeDegrees) {
+  const longitude = longitudeDegrees * Math.PI / 180;
+  const rightAscension = Math.atan2(
+    Math.sin(longitude) * Math.cos(OBLIQUITY_RADIANS),
+    Math.cos(longitude),
+  );
+  return (rightAscension + Math.PI * 2) % (Math.PI * 2);
 }
 
 function render() {
@@ -196,18 +206,20 @@ function drawClock(data) {
 
   const siderealAngle = data.siderealTimeHours * Math.PI / 12;
   for (let index = 0; index < 12; index += 1) {
-    const angle = siderealAngle - index * Math.PI / 6;
+    const boundaryRightAscension = eclipticLongitudeToRightAscension(index * 30);
+    const angle = siderealAngle - boundaryRightAscension + Math.PI;
     const inner = polar(angle, 176);
     const outer = polar(angle, 216);
     context.beginPath();
     context.moveTo(inner.x, inner.y);
     context.lineTo(outer.x, outer.y);
-    context.strokeStyle = index === 6 ? "#d46a4b" : "#9ba69a";
-    context.lineWidth = index === 6 ? 1.8 : 1;
+    context.strokeStyle = index === 0 ? "#d46a4b" : "#9ba69a";
+    context.lineWidth = index === 0 ? 1.8 : 1;
     context.stroke();
-    const sign = polar(angle - Math.PI / 12, 195);
-    context.fillStyle = index === 6 ? "#d46a4b" : "#68776b";
-    context.font = "600 10px 'DM Mono', monospace";
+    const signRightAscension = eclipticLongitudeToRightAscension(index * 30 + 15);
+    const sign = polar(siderealAngle - signRightAscension + Math.PI, 195);
+    context.fillStyle = "#68776b";
+    context.font = "18px 'Segoe UI Symbol', 'Noto Sans Symbols 2', serif";
     context.fillText(SYMBOLS[index], sign.x, sign.y);
   }
 
