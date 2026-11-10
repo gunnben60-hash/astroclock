@@ -1,6 +1,20 @@
 import * as Astronomy from "astronomy-engine";
 
 const BODY_NAMES = ["Mercury", "Venus", "Mars", "Jupiter", "Saturn"];
+const BABYLONIAN_MONTH_NAMES = [
+  "Nisannu",
+  "Ajaru",
+  "Simanu",
+  "Du'uzu",
+  "Abu",
+  "Ululu",
+  "Tašritu",
+  "Araḫsamna",
+  "Kislimu",
+  "Tebetu",
+  "Šabatu",
+  "Addaru",
+];
 const KM_PER_AU = 149597870.7;
 const MEAN_MOON_DISTANCE_KM = 381000;
 const SIDEREAL_HOURS_PER_CIRCLE = 24;
@@ -171,7 +185,39 @@ function getAstronomicalMoonMonth(date) {
     ordinal += 1;
   }
 
-  return `${currentSeason.name}${ordinal > 1 ? ` ${ordinal}` : ""}`;
+  return {
+    name: `${currentSeason.name}${ordinal > 1 ? ` ${ordinal}` : ""}`,
+    start: previousNewMoon.date,
+  };
+}
+
+function getAstronomicalBabylonianMonthName(beginOfMonth, observer) {
+  const getBaseMonthName = (monthStart) => {
+    const fullMoon = Astronomy.SearchMoonPhase(
+      180,
+      new Date(monthStart.getTime() + 1000),
+      40,
+    );
+    if (!fullMoon) throw new RangeError("Could not find the full moon for the Babylonian month.");
+
+    const sun = Astronomy.Equator(
+      Astronomy.Body.Sun,
+      fullMoon.date,
+      observer,
+      true,
+      true,
+    );
+    const monthIndex = Math.floor(sun.ra / 2);
+    return BABYLONIAN_MONTH_NAMES[monthIndex];
+  };
+
+  const monthName = getBaseMonthName(beginOfMonth);
+  const previousMonthName = getBaseMonthName(new Date(beginOfMonth.getTime() - 28 * 86400000));
+  if (previousMonthName === monthName) return `${monthName} 2`;
+
+  const followingMonthName = getBaseMonthName(new Date(beginOfMonth.getTime() + 28 * 86400000));
+  if (followingMonthName === monthName) return `${monthName} 1`;
+  return monthName;
 }
 
 function getMoonAboveHorizonDuration(observer, transit) {
@@ -251,6 +297,7 @@ export function calculateAstroData({
   const daylightHours = solarEvents.rise && solarEvents.set
     ? (solarEvents.set - solarEvents.rise) / 3600000
     : null;
+  const astronomicalMonth = getAstronomicalMoonMonth(date);
 
   return {
     date: new Date(date),
@@ -276,7 +323,8 @@ export function calculateAstroData({
     },
     moon: {
       ...moonPosition,
-      astronomicalMonth: getAstronomicalMoonMonth(date),
+      astronomicalMonth: astronomicalMonth.name,
+      babylonianMonth: getAstronomicalBabylonianMonthName(astronomicalMonth.start, observer),
       phaseAngleDegrees: moonPhaseAngle,
       illuminationPercent: moonIllumination.phase_fraction * 100,
       waxing: nextFullMoon.date < nextNewMoon.date,
