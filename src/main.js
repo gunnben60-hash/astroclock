@@ -220,6 +220,120 @@ function drawMoonDisc(phaseAngleDegrees) {
   moonContext.putImageData(image, 0, 0);
 }
 
+function drawSunSphere(targetContext, x, y, radius) {
+  targetContext.save();
+  targetContext.shadowColor = "rgba(218, 164, 54, 0.55)";
+  targetContext.shadowBlur = radius * 0.65;
+  targetContext.beginPath();
+  targetContext.arc(x, y, radius, 0, Math.PI * 2);
+  const gradient = targetContext.createRadialGradient(
+    x - radius * 0.34,
+    y - radius * 0.4,
+    radius * 0.08,
+    x,
+    y,
+    radius,
+  );
+  gradient.addColorStop(0, "#fff3c4");
+  gradient.addColorStop(0.35, "#f6d875");
+  gradient.addColorStop(0.74, "#d79e31");
+  gradient.addColorStop(1, "#8c5a1d");
+  targetContext.fillStyle = gradient;
+  targetContext.fill();
+  targetContext.shadowBlur = 0;
+  targetContext.strokeStyle = "#fff0b0";
+  targetContext.lineWidth = radius * 0.08;
+  targetContext.stroke();
+  targetContext.restore();
+}
+
+function getMoonLightDirection(moon, sun, siderealAngle) {
+  const moonRa = moon.rightAscension;
+  const moonDec = moon.declinationDegrees * Math.PI / 180;
+  const sunRa = sun.rightAscension;
+  const sunDec = sun.declinationDegrees * Math.PI / 180;
+  const moonVector = [
+    Math.cos(moonDec) * Math.cos(moonRa),
+    Math.cos(moonDec) * Math.sin(moonRa),
+    Math.sin(moonDec),
+  ];
+  const sunVector = [
+    Math.cos(sunDec) * Math.cos(sunRa),
+    Math.cos(sunDec) * Math.sin(sunRa),
+    Math.sin(sunDec),
+  ];
+  const alignment = sunVector.reduce((sum, component, index) => (
+    sum + component * moonVector[index]
+  ), 0);
+  const dialPoint = (body) => {
+    const angle = siderealAngle - body.rightAscension + Math.PI;
+    const radius = 216 + body.declinationDegrees / 23.44 * 72;
+    return {
+      x: 360 - Math.sin(angle) * radius,
+      y: 360 + Math.cos(angle) * radius,
+    };
+  };
+  const moonPoint = dialPoint(moon);
+  const sunPoint = dialPoint(sun);
+  const screenX = sunPoint.x - moonPoint.x;
+  const screenY = sunPoint.y - moonPoint.y;
+  const screenLength = Math.hypot(screenX, screenY);
+  const transverseLight = Math.sqrt(Math.max(0, 1 - alignment * alignment));
+
+  if (screenLength < 1e-8) return { x: 0, y: 0, z: -alignment };
+  return {
+    x: screenX / screenLength * transverseLight,
+    y: screenY / screenLength * transverseLight,
+    z: -alignment,
+  };
+}
+
+function drawMoonSphere(targetContext, x, y, radius, lightDirection) {
+  const textureSize = 128;
+  const texture = document.createElement("canvas");
+  texture.width = textureSize;
+  texture.height = textureSize;
+  const textureContext = texture.getContext("2d");
+  const image = textureContext.createImageData(textureSize, textureSize);
+  const center = textureSize / 2;
+  const sphereRadius = center - 2;
+
+  for (let pixelY = 0; pixelY < textureSize; pixelY += 1) {
+    for (let pixelX = 0; pixelX < textureSize; pixelX += 1) {
+      const normalX = (pixelX + 0.5 - center) / sphereRadius;
+      const normalY = (pixelY + 0.5 - center) / sphereRadius;
+      const squaredDistance = normalX * normalX + normalY * normalY;
+      if (squaredDistance > 1) continue;
+
+      const normalZ = Math.sqrt(1 - squaredDistance);
+      const illumination = normalX * lightDirection.x
+        + normalY * lightDirection.y
+        + normalZ * lightDirection.z;
+      const blend = Math.max(0, Math.min(1, (illumination + 0.025) / 0.05));
+      const darkSilver = 0.58 + 0.42 * normalZ;
+      const litSilver = 0.76 + 0.24 * normalZ;
+      const pixel = (pixelY * textureSize + pixelX) * 4;
+      image.data[pixel] = 74 * darkSilver + (226 * litSilver - 74 * darkSilver) * blend;
+      image.data[pixel + 1] = 82 * darkSilver + (231 * litSilver - 82 * darkSilver) * blend;
+      image.data[pixel + 2] = 91 * darkSilver + (234 * litSilver - 91 * darkSilver) * blend;
+      image.data[pixel + 3] = 255;
+    }
+  }
+
+  textureContext.putImageData(image, 0, 0);
+  targetContext.save();
+  targetContext.shadowColor = "rgba(17, 29, 38, 0.55)";
+  targetContext.shadowBlur = radius * 0.35;
+  targetContext.drawImage(texture, x - radius, y - radius, radius * 2, radius * 2);
+  targetContext.shadowBlur = 0;
+  targetContext.beginPath();
+  targetContext.arc(x, y, radius - 0.4, 0, Math.PI * 2);
+  targetContext.strokeStyle = "rgba(248, 249, 239, 0.8)";
+  targetContext.lineWidth = radius * 0.068;
+  targetContext.stroke();
+  targetContext.restore();
+}
+
 function drawClock(data) {
   const scale = window.devicePixelRatio || 1;
   canvas.width = 720 * scale;
@@ -421,6 +535,12 @@ function drawClock(data) {
     data.moon.eclipticLongitudeDegrees,
     data.moon.eclipticLatitudeDegrees,
   );
+  const geocentricSun = eclipticToEquatorial(data.sun.eclipticLongitudeDegrees, 0);
+  const moonLightDirection = getMoonLightDirection(
+    geocentricMoon,
+    geocentricSun,
+    siderealAngle,
+  );
   const bodies = [
     { name: "Sonne", body: data.sun, color: "#d89432", symbol: "☉", size: 9 },
     {
@@ -444,15 +564,21 @@ function drawClock(data) {
     context.strokeStyle = `${item.color}55`;
     context.lineWidth = 1;
     context.stroke();
-    context.beginPath();
-    context.arc(point.x, point.y, item.size, 0, Math.PI * 2);
-    context.fillStyle = item.color;
-    context.fill();
-    context.fillStyle = "#28332d";
-    context.font = `${item.name === "Sonne" || item.name === "Mond" ? "17px" : "15px"} 'Manrope', serif`;
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillText(item.symbol, point.x, point.y);
+    if (item.name === "Sonne") {
+      drawSunSphere(context, point.x, point.y, 12);
+    } else if (item.name === "Mond") {
+      drawMoonSphere(context, point.x, point.y, 11.3, moonLightDirection);
+    } else {
+      context.beginPath();
+      context.arc(point.x, point.y, item.size, 0, Math.PI * 2);
+      context.fillStyle = item.color;
+      context.fill();
+      context.fillStyle = "#28332d";
+      context.font = "15px 'Manrope', serif";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(item.symbol, point.x, point.y);
+    }
   }
 
   context.beginPath();
