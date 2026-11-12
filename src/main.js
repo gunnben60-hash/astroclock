@@ -228,7 +228,6 @@ function render() {
     settingsError.textContent = "";
   } catch (error) {
     settingsError.textContent = error.message;
-    document.querySelector("#status-label").textContent = "ZEITZONE PRÜFEN";
   }
 }
 
@@ -241,7 +240,6 @@ function updateDisplay(data) {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
   }).format(selectedDate);
   document.querySelector("#zone-tag").textContent = shortZone;
-  document.querySelector("#timezone-label").textContent = location.timeZone.toUpperCase();
   document.querySelector("#coordinates-label").textContent = `${Math.abs(location.latitude).toFixed(4)}° ${location.latitude >= 0 ? "N" : "S"} · ${Math.abs(location.longitude).toFixed(4)}° ${location.longitude >= 0 ? "E" : "W"}`;
   const placeLabels = {
     detecting: "Standort wird ermittelt…",
@@ -278,7 +276,6 @@ function updateDisplay(data) {
   document.querySelector("#latitude-input").value = location.latitude;
   document.querySelector("#longitude-input").value = location.longitude;
   document.querySelector("#timezone-input").value = location.timeZone;
-  document.querySelector("#status-label").textContent = "HIMMELSDATEN";
   document.querySelector("#live-button").classList.toggle("is-live", live);
   document.querySelector("#live-button").setAttribute("aria-pressed", String(live));
   document.querySelector("#live-button").innerHTML = `<span class="live-dot"></span> ${live ? "LIVE" : "PAUSIERT"}`;
