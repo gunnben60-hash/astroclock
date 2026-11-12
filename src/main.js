@@ -5,6 +5,8 @@ const DEFAULT_LOCATION = {
   longitude: 13.066667,
   timeZone: "Europe/Berlin",
 };
+const CLIENT_TIME_ZONE = new Intl.DateTimeFormat().resolvedOptions().timeZone
+  || DEFAULT_LOCATION.timeZone;
 const SYMBOLS = ["♈︎", "♉︎", "♊︎", "♋︎", "♌︎", "♍︎", "♎︎", "♏︎", "♐︎", "♑︎", "♒︎", "♓︎"];
 const OBLIQUITY_RADIANS = 23.43928 * Math.PI / 180;
 const LUNAR_ORBIT_INCLINATION_RADIANS = 5.145 * Math.PI / 180;
@@ -22,7 +24,8 @@ const historicalEventInput = document.querySelector("#historical-event");
 const locationForm = document.querySelector("#location-form");
 const settingsError = document.querySelector("#settings-error");
 const formatterCache = new Map();
-let location = readLocation();
+let location = { ...readLocation(), timeZone: CLIENT_TIME_ZONE };
+let locationSource = "detecting";
 let selectedDate = new Date();
 let live = true;
 let lastCalculatedMinute = -1;
@@ -42,6 +45,64 @@ function readLocation() {
     // Ignore unavailable or malformed browser storage.
   }
   return { ...DEFAULT_LOCATION };
+}
+
+function getBrowserLocation() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Browser-Geolokalisierung ist nicht verfügbar."));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      maximumAge: 300000,
+      timeout: 10000,
+    });
+  });
+}
+
+async function getApproximateLocation() {
+  const response = await fetch("https://ipapi.co/json/", {
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok) throw new Error("IP-Standortdienst ist nicht erreichbar.");
+
+  const result = await response.json();
+  const latitude = Number(result.latitude);
+  const longitude = Number(result.longitude);
+  if (result.error || !Number.isFinite(latitude) || Math.abs(latitude) > 90
+    || !Number.isFinite(longitude) || Math.abs(longitude) > 180) {
+    throw new Error("IP-Standortdienst lieferte keine gültigen Koordinaten.");
+  }
+  return { latitude, longitude };
+}
+
+async function detectClientLocation() {
+  try {
+    const position = await getBrowserLocation();
+    location = {
+      ...location,
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude,
+      timeZone: CLIENT_TIME_ZONE,
+    };
+    locationSource = position.coords.accuracy > 1000 ? "approximate" : "exact";
+  } catch {
+    try {
+      const approximateLocation = await getApproximateLocation();
+      location = { ...location, ...approximateLocation, timeZone: CLIENT_TIME_ZONE };
+      locationSource = "approximate";
+    } catch {
+      locationSource = "fallback";
+    }
+  }
+
+  try {
+    localStorage.setItem("astroclock-location", JSON.stringify(location));
+  } catch {
+    // Keep the detected location for this session if storage is unavailable.
+  }
+  render();
 }
 
 function getFormatter(timeZone, options) {
@@ -152,8 +213,18 @@ function updateDisplay(data) {
   document.querySelector("#zone-tag").textContent = shortZone;
   document.querySelector("#timezone-label").textContent = location.timeZone.toUpperCase();
   document.querySelector("#coordinates-label").textContent = `${Math.abs(location.latitude).toFixed(4)}° ${location.latitude >= 0 ? "N" : "S"} · ${Math.abs(location.longitude).toFixed(4)}° ${location.longitude >= 0 ? "E" : "W"}`;
-  document.querySelector("#place-label").textContent = location.latitude === DEFAULT_LOCATION.latitude
-    && location.longitude === DEFAULT_LOCATION.longitude ? "Zschopau, Deutschland" : "Beobachtungsort";
+  const placeLabels = {
+    detecting: "Standort wird ermittelt…",
+    exact: "Aktueller Standort",
+    approximate: "Ungefährer Standort",
+    manual: "Manuell eingestellt",
+    fallback: "Standort nicht ermittelt",
+  };
+  document.querySelector("#place-label").textContent = locationSource === "exact"
+    && location.latitude === DEFAULT_LOCATION.latitude
+    && location.longitude === DEFAULT_LOCATION.longitude
+    ? "Zschopau, Deutschland"
+    : placeLabels[locationSource] ?? "Beobachtungsort";
   document.querySelector("#solar-time").textContent = formatClockHours(data.trueSolarTimeHours);
   document.querySelector("#sidereal-time").textContent = formatClockHours(data.siderealTimeHours);
   document.querySelector("#sunrise").textContent = formatEvent(data.events.sunrise);
@@ -785,6 +856,7 @@ locationForm.addEventListener("submit", (event) => {
       throw new RangeError("Breiten- oder Längengrad liegt außerhalb des gültigen Bereichs.");
     }
     location = nextLocation;
+    locationSource = "manual";
     localStorage.setItem("astroclock-location", JSON.stringify(location));
     document.querySelector("#settings-panel").open = false;
     render();
@@ -830,3 +902,4 @@ window.setInterval(() => {
 }, 1000);
 
 render();
+detectClientLocation();
