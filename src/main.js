@@ -18,6 +18,7 @@ const PLANET_SYMBOLS = {
 const canvas = document.querySelector("#astro-clock");
 const context = canvas.getContext("2d");
 const dateInput = document.querySelector("#datetime-input");
+const historicalEventInput = document.querySelector("#historical-event");
 const locationForm = document.querySelector("#location-form");
 const settingsError = document.querySelector("#settings-error");
 const formatterCache = new Map();
@@ -736,6 +737,22 @@ dateInput.addEventListener("change", () => {
     render();
   } catch (error) {
     settingsError.textContent = error.message;
+  }
+});
+
+historicalEventInput.addEventListener("change", () => {
+  if (!historicalEventInput.value) return;
+  live = false;
+  try {
+    selectedDate = localDateTimeToDate(
+      `${historicalEventInput.value}T12:00`,
+      location.timeZone,
+    );
+    render();
+  } catch (error) {
+    settingsError.textContent = error.message;
+  } finally {
+    historicalEventInput.value = "";
   }
 });
 

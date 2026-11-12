@@ -40,11 +40,12 @@ canvas:active { cursor: grabbing; }
 .clock-caption { position: absolute; z-index: 2; top: calc(50% + 24px); left: 50%; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 3px; pointer-events: none; }
 .clock-caption span { color: var(--muted); font: 9px var(--mono); letter-spacing: 1px; }
 .clock-caption strong { font: 18px var(--mono); color: var(--ink); }
-.clock-controls { width: min(100%, 520px); margin: 8px auto 0; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.clock-controls { width: min(100%, 520px); margin: 8px auto 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
 .icon-button, .text-button { height: 38px; border: 1px solid var(--line); background: #fbfaf5; border-radius: 3px; cursor: pointer; }
 .icon-button { width: 40px; font-size: 18px; }
 .icon-button:hover, .text-button:hover { border-color: var(--green); color: var(--green); }
 .datetime-control input { height: 38px; width: min(245px, 48vw); border: 1px solid var(--line); border-radius: 3px; background: #fbfaf5; color: var(--ink); padding: 0 9px; font: 12px var(--mono); }
+.historical-control select { height: 38px; width: min(245px, calc(100vw - 48px)); border: 1px solid var(--line); border-radius: 3px; background: #fbfaf5; color: var(--ink); padding: 0 9px; font: 11px var(--mono); }
 .text-button { padding: 0 13px; font-size: 12px; }
 .data-column { border-top: 2px solid #526d57; background: var(--paper); padding: 0 24px; box-shadow: 0 10px 30px #35443808; }
 .data-section { padding: 21px 0 22px; border-bottom: 1px solid var(--line); }
