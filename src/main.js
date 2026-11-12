@@ -163,6 +163,8 @@ function updateDisplay(data) {
   document.querySelector("#moonset").textContent = formatEvent(data.events.moonset);
   document.querySelector("#daylight").textContent = formatDuration(data.events.daylightHours);
   document.querySelector("#daylight-bar").style.width = `${Math.max(0, Math.min(100, (data.events.daylightHours ?? 0) / 24 * 100))}%`;
+  document.querySelector("#moon-above-duration").textContent = formatDuration(data.events.moonAboveHorizonHours);
+  document.querySelector("#moon-above-bar").style.width = `${Math.max(0, Math.min(100, (data.events.moonAboveHorizonHours ?? 0) / 24 * 100))}%`;
   document.querySelector("#moon-illumination").textContent = `${Math.round(data.moon.illuminationPercent)} % beleuchtet`;
   document.querySelector("#moon-phase").textContent = getMoonPhase(data.moon.phaseAngleDegrees);
   drawMoonDisc(data.moon.phaseAngleDegrees);
