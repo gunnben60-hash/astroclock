@@ -26,6 +26,7 @@ const settingsError = document.querySelector("#settings-error");
 const formatterCache = new Map();
 let location = { ...readLocation(), timeZone: CLIENT_TIME_ZONE };
 let locationSource = "detecting";
+let detectedPlace = "";
 let selectedDate = new Date();
 let live = true;
 let lastCalculatedMinute = -1;
@@ -74,7 +75,21 @@ async function getApproximateLocation() {
     || !Number.isFinite(longitude) || Math.abs(longitude) > 180) {
     throw new Error("IP-Standortdienst lieferte keine gültigen Koordinaten.");
   }
-  return { latitude, longitude };
+  return { latitude, longitude, countryName: result.country_name };
+}
+
+async function getPlaceName(latitude, longitude) {
+  const query = new URLSearchParams({
+    latitude: String(latitude),
+    longitude: String(longitude),
+    localityLanguage: "de",
+  });
+  const response = await fetch(`https://api-bdc.io/data/reverse-geocode-client?${query}`);
+  if (!response.ok) throw new Error("Reverse-Geocoding ist nicht verfügbar.");
+
+  const result = await response.json();
+  const city = result.city || result.locality;
+  return [city, result.countryName].filter(Boolean).join(", ");
 }
 
 async function detectClientLocation() {
@@ -87,13 +102,20 @@ async function detectClientLocation() {
       timeZone: CLIENT_TIME_ZONE,
     };
     locationSource = position.coords.accuracy > 1000 ? "approximate" : "exact";
+    try {
+      detectedPlace = await getPlaceName(position.coords.latitude, position.coords.longitude);
+    } catch {
+      detectedPlace = "";
+    }
   } catch {
     try {
       const approximateLocation = await getApproximateLocation();
       location = { ...location, ...approximateLocation, timeZone: CLIENT_TIME_ZONE };
       locationSource = "approximate";
+      detectedPlace = approximateLocation.countryName || "";
     } catch {
       locationSource = "fallback";
+      detectedPlace = "";
     }
   }
 
@@ -220,11 +242,9 @@ function updateDisplay(data) {
     manual: "Manuell eingestellt",
     fallback: "Standort nicht ermittelt",
   };
-  document.querySelector("#place-label").textContent = locationSource === "exact"
-    && location.latitude === DEFAULT_LOCATION.latitude
-    && location.longitude === DEFAULT_LOCATION.longitude
-    ? "Zschopau, Deutschland"
-    : placeLabels[locationSource] ?? "Beobachtungsort";
+  document.querySelector("#place-label").textContent = detectedPlace
+    || placeLabels[locationSource]
+    || "Beobachtungsort";
   document.querySelector("#solar-time").textContent = formatClockHours(data.trueSolarTimeHours);
   document.querySelector("#sidereal-time").textContent = formatClockHours(data.siderealTimeHours);
   document.querySelector("#sunrise").textContent = formatEvent(data.events.sunrise);
@@ -857,6 +877,7 @@ locationForm.addEventListener("submit", (event) => {
     }
     location = nextLocation;
     locationSource = "manual";
+    detectedPlace = "";
     localStorage.setItem("astroclock-location", JSON.stringify(location));
     document.querySelector("#settings-panel").open = false;
     render();
