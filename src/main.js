@@ -27,6 +27,8 @@ let live = true;
 let lastCalculatedMinute = -1;
 let currentData;
 let dragStart = null;
+let pendingDragShift = 0;
+let dragFrame = null;
 
 function readLocation() {
   try {
@@ -699,6 +701,33 @@ function changeDay(amount) {
   render();
 }
 
+function pointerAngle(event) {
+  const bounds = canvas.getBoundingClientRect();
+  const x = (event.clientX - bounds.left) / bounds.width * 720 - 360;
+  const y = (event.clientY - bounds.top) / bounds.height * 720 - 360;
+  return Math.atan2(y, x);
+}
+
+function queueDragShift(angle) {
+  let shift = (angle - dragStart) / (Math.PI * 2);
+  if (shift > 0.5) shift -= 1;
+  if (shift < -0.5) shift += 1;
+  dragStart = angle;
+  pendingDragShift += shift;
+  if (dragFrame === null) {
+    dragFrame = window.requestAnimationFrame(applyDragShift);
+  }
+}
+
+function applyDragShift() {
+  dragFrame = null;
+  if (pendingDragShift === 0) return;
+  live = false;
+  selectedDate = new Date(selectedDate.getTime() + pendingDragShift * 86400000);
+  pendingDragShift = 0;
+  render();
+}
+
 dateInput.addEventListener("change", () => {
   if (!dateInput.value) return;
   live = false;
@@ -746,29 +775,30 @@ locationForm.addEventListener("submit", (event) => {
 });
 
 canvas.addEventListener("pointerdown", (event) => {
-  const bounds = canvas.getBoundingClientRect();
-  const x = (event.clientX - bounds.left) / bounds.width * 720 - 360;
-  const y = (event.clientY - bounds.top) / bounds.height * 720 - 360;
-  dragStart = Math.atan2(y, x);
+  dragStart = pointerAngle(event);
+  pendingDragShift = 0;
   canvas.setPointerCapture(event.pointerId);
+});
+canvas.addEventListener("pointermove", (event) => {
+  if (dragStart === null) return;
+  queueDragShift(pointerAngle(event));
 });
 canvas.addEventListener("pointerup", (event) => {
   if (dragStart === null) return;
-  const bounds = canvas.getBoundingClientRect();
-  const x = (event.clientX - bounds.left) / bounds.width * 720 - 360;
-  const y = (event.clientY - bounds.top) / bounds.height * 720 - 360;
-  const end = Math.atan2(y, x);
-  let shift = (end - dragStart) / (Math.PI * 2);
-  if (shift > 0.5) shift -= 1;
-  if (shift < -0.5) shift += 1;
+  queueDragShift(pointerAngle(event));
   dragStart = null;
-  if (Math.abs(shift) > 0.005) {
-    live = false;
-    selectedDate = new Date(selectedDate.getTime() + shift * 86400000);
-    render();
+  if (dragFrame !== null) {
+    window.cancelAnimationFrame(dragFrame);
+    applyDragShift();
   }
 });
-canvas.addEventListener("pointercancel", () => { dragStart = null; });
+canvas.addEventListener("pointercancel", () => {
+  dragStart = null;
+  if (dragFrame !== null) {
+    window.cancelAnimationFrame(dragFrame);
+    applyDragShift();
+  }
+});
 
 window.setInterval(() => {
   if (!live) return;
