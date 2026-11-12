@@ -27,6 +27,7 @@ const formatterCache = new Map();
 let location = { ...readLocation(), timeZone: CLIENT_TIME_ZONE };
 let locationSource = "detecting";
 let detectedPlace = "";
+let locationRequestId = 0;
 let selectedDate = new Date();
 let live = true;
 let lastCalculatedMinute = -1;
@@ -93,8 +94,10 @@ async function getPlaceName(latitude, longitude) {
 }
 
 async function detectClientLocation() {
+  const requestId = ++locationRequestId;
   try {
     const position = await getBrowserLocation();
+    if (requestId !== locationRequestId) return;
     location = {
       ...location,
       latitude: position.coords.latitude,
@@ -105,19 +108,24 @@ async function detectClientLocation() {
     try {
       detectedPlace = await getPlaceName(position.coords.latitude, position.coords.longitude);
     } catch {
+      if (requestId !== locationRequestId) return;
       detectedPlace = "";
     }
   } catch {
+    if (requestId !== locationRequestId) return;
     try {
       const approximateLocation = await getApproximateLocation();
+      if (requestId !== locationRequestId) return;
       location = { ...location, ...approximateLocation, timeZone: CLIENT_TIME_ZONE };
       locationSource = "approximate";
       detectedPlace = approximateLocation.countryName || "";
     } catch {
+      if (requestId !== locationRequestId) return;
       locationSource = "fallback";
       detectedPlace = "";
     }
   }
+  if (requestId !== locationRequestId) return;
 
   try {
     localStorage.setItem("astroclock-location", JSON.stringify(location));
@@ -862,7 +870,7 @@ document.querySelector("#live-button").addEventListener("click", () => {
   render();
 });
 
-locationForm.addEventListener("submit", (event) => {
+locationForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const nextLocation = {
     latitude: Number(document.querySelector("#latitude-input").value),
@@ -875,12 +883,19 @@ locationForm.addEventListener("submit", (event) => {
       || !Number.isFinite(nextLocation.longitude) || Math.abs(nextLocation.longitude) > 180) {
       throw new RangeError("Breiten- oder Längengrad liegt außerhalb des gültigen Bereichs.");
     }
+    const requestId = ++locationRequestId;
     location = nextLocation;
     locationSource = "manual";
     detectedPlace = "";
     localStorage.setItem("astroclock-location", JSON.stringify(location));
     document.querySelector("#settings-panel").open = false;
     render();
+    try {
+      detectedPlace = await getPlaceName(nextLocation.latitude, nextLocation.longitude);
+    } catch {
+      detectedPlace = "";
+    }
+    if (requestId === locationRequestId && locationSource === "manual") render();
   } catch (error) {
     settingsError.textContent = `Standort konnte nicht übernommen werden: ${error.message}`;
   }
