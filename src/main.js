@@ -5,6 +5,12 @@ const DEFAULT_LOCATION = {
   longitude: 13.066667,
   timeZone: "Europe/Berlin",
 };
+const FALLBACK_TIME_ZONES = [
+  "Africa/Johannesburg", "America/Los_Angeles", "America/New_York",
+  "America/Sao_Paulo", "Asia/Dubai", "Asia/Kolkata", "Asia/Shanghai",
+  "Asia/Tokyo", "Australia/Sydney", "Europe/Berlin", "Europe/London",
+  "Europe/Moscow", "Pacific/Auckland", "UTC",
+];
 const CLIENT_TIME_ZONE = new Intl.DateTimeFormat().resolvedOptions().timeZone
   || DEFAULT_LOCATION.timeZone;
 const SYMBOLS = ["♈︎", "♉︎", "♊︎", "♋︎", "♌︎", "♍︎", "♎︎", "♏︎", "♐︎", "♑︎", "♒︎", "♓︎"];
@@ -22,6 +28,7 @@ const context = canvas.getContext("2d");
 const dateInput = document.querySelector("#datetime-input");
 const historicalEventInput = document.querySelector("#historical-event");
 const locationForm = document.querySelector("#location-form");
+const timeZoneInput = document.querySelector("#timezone-input");
 const settingsError = document.querySelector("#settings-error");
 const formatterCache = new Map();
 let location = { ...readLocation(), timeZone: CLIENT_TIME_ZONE };
@@ -47,6 +54,27 @@ function readLocation() {
     // Ignore unavailable or malformed browser storage.
   }
   return { ...DEFAULT_LOCATION };
+}
+
+function populateTimeZoneOptions() {
+  const supportedTimeZones = typeof Intl.supportedValuesOf === "function"
+    ? Intl.supportedValuesOf("timeZone")
+    : FALLBACK_TIME_ZONES;
+  const timeZones = new Set([
+    "UTC",
+    ...supportedTimeZones,
+    CLIENT_TIME_ZONE,
+    location.timeZone,
+  ]);
+  const options = [...timeZones]
+    .sort((left, right) => left.localeCompare(right))
+    .map((timeZone) => {
+      const option = document.createElement("option");
+      option.value = timeZone;
+      option.textContent = timeZone;
+      return option;
+    });
+  timeZoneInput.replaceChildren(...options);
 }
 
 function getBrowserLocation() {
@@ -275,7 +303,7 @@ function updateDisplay(data) {
   dateInput.value = localInputValue(selectedDate);
   document.querySelector("#latitude-input").value = location.latitude;
   document.querySelector("#longitude-input").value = location.longitude;
-  document.querySelector("#timezone-input").value = location.timeZone;
+  timeZoneInput.value = location.timeZone;
   document.querySelector("#live-button").classList.toggle("is-live", live);
   document.querySelector("#live-button").setAttribute("aria-pressed", String(live));
   document.querySelector("#live-button").innerHTML = `<span class="live-dot"></span> ${live ? "LIVE" : "PAUSIERT"}`;
@@ -872,7 +900,7 @@ locationForm.addEventListener("submit", async (event) => {
   const nextLocation = {
     latitude: Number(document.querySelector("#latitude-input").value),
     longitude: Number(document.querySelector("#longitude-input").value),
-    timeZone: document.querySelector("#timezone-input").value.trim(),
+    timeZone: timeZoneInput.value,
   };
   try {
     new Intl.DateTimeFormat("de-DE", { timeZone: nextLocation.timeZone }).format(selectedDate);
@@ -934,5 +962,6 @@ window.setInterval(() => {
   }
 }, 1000);
 
+populateTimeZoneOptions();
 render();
 detectClientLocation();

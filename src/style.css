@@ -89,7 +89,7 @@ canvas:active { cursor: grabbing; }
 .settings-section[open] .settings-plus { transform: rotate(45deg); }
 .location-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-top: 16px; }
 .location-form label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; }
-.location-form input { width: 100%; min-width: 0; height: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: 2px; background: #fffefa; color: var(--ink); font: 11px var(--mono); }
+.location-form input, .location-form select { width: 100%; min-width: 0; height: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: 2px; background: #fffefa; color: var(--ink); font: 11px var(--mono); }
 .timezone-field { grid-column: 1 / -1; }
 .save-button { grid-column: 1 / -1; height: 35px; border: 0; border-radius: 2px; background: var(--green); color: white; font-size: 11px; cursor: pointer; }
 .save-button:hover { background: #3e5744; }
