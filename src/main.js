@@ -300,6 +300,7 @@ function updateDisplay(data) {
     "ar-SA-u-ca-islamic-umalqura",
     { calendar: "islamic-umalqura", timeZone: location.timeZone, month: "long" },
   ).format(selectedDate);
+  updateLiliusClaviusMoons(data.moon.liliusClaviusDay);
   dateInput.value = localInputValue(selectedDate);
   document.querySelector("#latitude-input").value = location.latitude;
   document.querySelector("#longitude-input").value = location.longitude;
@@ -308,6 +309,31 @@ function updateDisplay(data) {
   document.querySelector("#live-button").setAttribute("aria-pressed", String(live));
   document.querySelector("#live-button").innerHTML = `<span class="live-dot"></span> ${live ? "LIVE" : "PAUSIERT"}`;
   if (!Number.isFinite(parts.year)) throw new Error("Die gewählte Zeitzone ist ungültig.");
+}
+
+function updateLiliusClaviusMoons({ goldenNumber, newMoon, fullMoon }) {
+  // Drei feste Spalten: goldene Zahl, Neumond, Vollmond. Leere Spalten bleiben als Platzhalter stehen.
+  const slots = [["⚫", "Neumond", newMoon], ["⚪", "Vollmond", fullMoon]].map(([symbol, label, numbers]) => {
+    const group = document.createElement("span");
+    group.className = "lilius-clavius-group";
+    if (!numbers.length) return group;
+    group.title = `${label} (goldene Zahl)`;
+    group.append(symbol, " ");
+    numbers.forEach((number, index) => {
+      if (index) group.append(" ");
+      const item = document.createElement("span");
+      item.textContent = number;
+      if (number === goldenNumber) item.className = "lilius-clavius-current";
+      group.append(item);
+    });
+    return group;
+  });
+  const container = document.querySelector("#lilius-clavius-moons");
+  const current = document.createElement("span");
+  current.className = "lilius-clavius-golden";
+  current.title = "Goldene Zahl des Jahres";
+  current.textContent = `(${goldenNumber})`;
+  container.replaceChildren(current, ...slots);
 }
 
 function getMoonPhase(phaseAngleDegrees) {

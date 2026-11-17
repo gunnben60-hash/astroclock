@@ -1,4 +1,5 @@
 import * as Astronomy from "astronomy-engine";
+import { getGoldenNumber, getLiliusClaviusMoonDay } from "./lilius-clavius.js";
 
 const BODY_NAMES = ["Mercury", "Venus", "Mars", "Jupiter", "Saturn"];
 const BABYLONIAN_MONTH_NAMES = [
@@ -232,7 +233,7 @@ function getAstronomicalBabylonianMonthName(beginOfMonth, observer) {
 }
 
 function getGregorianEpact(year) {
-  const goldenNumber = year % 19 + 1;
+  const goldenNumber = modulo(year, 19) + 1;
   const julianEpact = (11 * (goldenNumber - 1)) % 30;
   const century = Math.floor(year / 100);
   const solarCorrection = Math.floor(3 * (century + 1) / 4);
@@ -458,6 +459,10 @@ export function calculateAstroData({
       astronomicalMonth: astronomicalMonth.name,
       babylonianMonth: getAstronomicalBabylonianMonthName(astronomicalMonth.start, observer),
       liliusClaviusMonth: getLiliusClaviusMonthName(astronomicalMonth.start, timeZone),
+      liliusClaviusDay: {
+        goldenNumber: getGoldenNumber(localParts.year),
+        ...getLiliusClaviusMoonDay(localParts.year, localParts.month, localParts.day),
+      },
       phaseAngleDegrees: moonPhaseAngle,
       illuminationPercent: moonIllumination.phase_fraction * 100,
       waxing: nextFullMoon.date < nextNewMoon.date,
